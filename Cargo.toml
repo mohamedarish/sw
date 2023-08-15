@@ -1,0 +1,28 @@
+[package]
+name = "sw"
+version = "0.0.2"
+edition = "2021"
+authors = ["Mohamed Arish T P<arish1248@gmail.com>"]
+description = """
+sw is a lightweight ls clone that does not have all the features that ls has
+It is somehow still bigger than ls in size when compiled
+Surprisingly though it does not take up as much resource when compared to ls
+"""
+repository = "https://www.github.com/mohamedarish/sw"
+keywords = ["ls", "sw", "begginer", "terminal", "linux"]
+categories = ["command-line-utilities", "directory-exploration"]
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.3.21", features = ["derive"] }
+colored = "2.0.4"
+tempfile = "3.7.1"
+term_size = "0.3.2"
+
+[profile.release]
+opt-level = "z"  # Optimize for size.
+lto = true
+strip = true  # Automatically strip symbols from the binary.
+debug = 1
