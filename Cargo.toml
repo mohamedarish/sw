@@ -9,7 +9,7 @@ It is somehow still bigger than ls in size when compiled
 Surprisingly though it does not take up as much resource when compared to ls
 """
 repository = "https://www.github.com/mohamedarish/sw"
-keywords = ["ls", "sw", "beginer", "terminal", "linux"]
+keywords = ["ls", "sw", "beginner", "terminal", "linux"]
 categories = ["command-line-utilities", "directory-exploration"]
 license = "MIT"
 
