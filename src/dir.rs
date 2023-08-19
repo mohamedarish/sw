@@ -1,5 +1,4 @@
 use colored::Colorize;
-use libc::S_IWGRP;
 use std::{
     collections::BTreeSet,
     fs::ReadDir,
