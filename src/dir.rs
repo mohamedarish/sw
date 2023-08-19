@@ -14,9 +14,7 @@ pub struct Directory {
     pub files: BTreeSet<String>,
     pub hidden_files: BTreeSet<String>,
 }
-fn print_type_of<T>(_: &T) {
-    println!("{}", std::any::type_name::<T>())
-}
+
 impl Directory {
     pub fn from(root: ReadDir, hidden: bool, list: bool) -> Self {
         let mut folders = BTreeSet::new();
@@ -45,20 +43,16 @@ impl Directory {
 
             if hidden && name.chars().nth(0) == Some('.') {
                 if info.is_file() {
-                    hidden_files.insert(format!("{name}"));
+                    hidden_files.insert(name.to_string());
                 } else if info.is_dir() {
-                    hidden_folders.insert(format!("{name}"));
+                    hidden_folders.insert(name.to_string());
                 }
-            } else {
-                if info.is_file() {
-                    files.insert(format!("{name}"));
-                } else if info.is_dir() {
-                    folders.insert(format!("{name}"));
-                }
+            } else if info.is_file() {
+                files.insert(name.to_string());
+            } else if info.is_dir() {
+                folders.insert(name.to_string());
             }
         }
-
-        print_type_of(&S_IWGRP);
 
         Self {
             folders,
@@ -80,7 +74,7 @@ impl Directory {
 
                 for file in &self.hidden_folders {
                     if width - count < 40 {
-                        writeln!(stdout, "").expect("Cannot write to stdout");
+                        writeln!(stdout).expect("Cannot write to stdout");
                         count = 0;
                     }
 
@@ -93,7 +87,7 @@ impl Directory {
 
             for file in &self.folders {
                 if width - count < 40 {
-                    writeln!(stdout, "").expect("Cannot write to stdout");
+                    writeln!(stdout).expect("Cannot write to stdout");
                     count = 0;
                 }
 
@@ -102,7 +96,7 @@ impl Directory {
                 count += 25;
             }
 
-            writeln!(stdout, "").expect("Cannot write to stdout");
+            writeln!(stdout).expect("Cannot write to stdout");
         }
 
         if !self.hidden_files.is_empty() || !self.files.is_empty() {
@@ -110,7 +104,7 @@ impl Directory {
             if all {
                 for file in &self.hidden_files {
                     if width - count < 40 {
-                        writeln!(stdout, "").expect("Cannot write to stdout");
+                        writeln!(stdout).expect("Cannot write to stdout");
                         count = 0;
                     }
 
@@ -119,7 +113,7 @@ impl Directory {
                     count += 25;
 
                     if width - count < 40 {
-                        writeln!(stdout, "").expect("Cannot write to stdout");
+                        writeln!(stdout).expect("Cannot write to stdout");
                         count = 0;
                     }
                 }
@@ -127,7 +121,7 @@ impl Directory {
 
             for file in &self.files {
                 if width - count < 40 {
-                    writeln!(stdout, "").expect("Cannot write to stdout");
+                    writeln!(stdout).expect("Cannot write to stdout");
                     count = 0;
                 }
 
@@ -136,7 +130,7 @@ impl Directory {
                 count += 25;
             }
 
-            writeln!(stdout, "").expect("Cannot write to stdout");
+            writeln!(stdout).expect("Cannot write to stdout");
         }
     }
 }
@@ -172,7 +166,7 @@ mod tests {
         let temp_dir = create_test_directory(false).unwrap();
         let root = temp_dir.path().read_dir().unwrap();
 
-        let directory = Directory::from(root, false);
+        let directory = Directory::from(root, false, false);
 
         let expected_folders = vec![String::from("folder1")];
         let expected_files = vec![String::from("file1.txt")];
@@ -188,7 +182,7 @@ mod tests {
         let temp_dir = create_test_directory(true).unwrap();
         let root = temp_dir.path().read_dir().unwrap();
 
-        let directory = Directory::from(root, true);
+        let directory = Directory::from(root, true, false);
 
         let expected_hidden_folders = vec![String::from(".hidden_folder")];
         let expected_hidden_files = vec![String::from(".hidden_file.txt")];
