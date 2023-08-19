@@ -5,6 +5,8 @@ use std::{
     io::{StdoutLock, Write},
 };
 
+use crate::support::parse_permissions;
+
 pub struct Directory {
     pub folders: BTreeSet<String>,
     pub hidden_folders: BTreeSet<String>,
@@ -30,7 +32,11 @@ impl Directory {
                 continue;
             }
 
-            println!("{name}: {data:?}");
+            let data = item.metadata().expect("Cannot access metadata");
+
+            let perm_string = parse_permissions(data);
+
+            println!("{perm_string}");
 
             let info = item.file_type().expect("Cannot access info of item");
 
