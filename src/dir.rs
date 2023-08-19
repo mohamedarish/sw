@@ -1,4 +1,5 @@
 use colored::Colorize;
+use libc::S_IWGRP;
 use std::{
     collections::BTreeSet,
     fs::ReadDir,
@@ -13,7 +14,9 @@ pub struct Directory {
     pub files: BTreeSet<String>,
     pub hidden_files: BTreeSet<String>,
 }
-
+fn print_type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
+}
 impl Directory {
     pub fn from(root: ReadDir, hidden: bool, list: bool) -> Self {
         let mut folders = BTreeSet::new();
@@ -54,6 +57,8 @@ impl Directory {
                 }
             }
         }
+
+        print_type_of(&S_IWGRP);
 
         Self {
             folders,
