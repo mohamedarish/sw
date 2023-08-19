@@ -32,28 +32,28 @@ pub fn parse_permissions(metadata: Metadata) -> String {
             String::from("-")
         },
         triplet(
-            metadata.permissions().mode() as u16,
-            S_IRUSR,
-            S_IWUSR,
-            S_IXUSR,
+            metadata.permissions().mode(),
+            S_IRUSR as u32,
+            S_IWUSR as u32,
+            S_IXUSR as u32,
         ),
         triplet(
-            metadata.permissions().mode() as u16,
-            S_IRGRP,
-            S_IWGRP,
-            S_IXGRP,
+            metadata.permissions().mode(),
+            S_IRGRP as u32,
+            S_IWGRP as u32,
+            S_IXGRP as u32,
         ),
         triplet(
-            metadata.permissions().mode() as u16,
-            S_IROTH,
-            S_IWOTH,
-            S_IXOTH,
+            metadata.permissions().mode(),
+            S_IROTH as u32,
+            S_IWOTH as u32,
+            S_IXOTH as u32,
         ),
     ]
     .join("")
 }
 
-fn triplet(mode: u16, read: u16, write: u16, execute: u16) -> String {
+fn triplet(mode: u32, read: u32, write: u32, execute: u32) -> String {
     String::from(match (mode & read, mode & write, mode & execute) {
         (0, 0, 0) => "---",
         (0, 0, _) => "--x",
