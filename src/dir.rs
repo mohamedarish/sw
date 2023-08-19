@@ -1,4 +1,9 @@
-use std::{collections::BTreeSet, fs::ReadDir};
+use colored::Colorize;
+use std::{
+    collections::BTreeSet,
+    fs::ReadDir,
+    io::{StdoutLock, Write},
+};
 
 pub struct Directory {
     pub folders: BTreeSet<String>,
@@ -8,7 +13,7 @@ pub struct Directory {
 }
 
 impl Directory {
-    pub fn from(root: ReadDir, hidden: bool) -> Self {
+    pub fn from(root: ReadDir, hidden: bool, list: bool) -> Self {
         let mut folders = BTreeSet::new();
         let mut hidden_folders = BTreeSet::new();
         let mut files = BTreeSet::new();
@@ -25,19 +30,21 @@ impl Directory {
                 continue;
             }
 
+            println!("{name}: {data:?}");
+
             let info = item.file_type().expect("Cannot access info of item");
 
             if hidden && name.chars().nth(0) == Some('.') {
                 if info.is_file() {
-                    hidden_files.insert(format!("{name: <6}"));
+                    hidden_files.insert(format!("{name}"));
                 } else if info.is_dir() {
-                    hidden_folders.insert(format!("{name: <6}"));
+                    hidden_folders.insert(format!("{name}"));
                 }
             } else {
                 if info.is_file() {
-                    files.insert(format!("{name: <6}"));
+                    files.insert(format!("{name}"));
                 } else if info.is_dir() {
-                    folders.insert(format!("{name: <6}"));
+                    folders.insert(format!("{name}"));
                 }
             }
         }
@@ -47,6 +54,78 @@ impl Directory {
             hidden_folders,
             files,
             hidden_files,
+        }
+    }
+
+    pub fn print_nlist(&self, stdout: &mut StdoutLock, width: usize, all: bool) {
+        if !self.hidden_folders.is_empty() || !self.folders.is_empty() {
+            let mut count = 0;
+            if all {
+                write!(stdout, "{: <25}", "..".bright_cyan().bold())
+                    .expect("Cannot write to stdout");
+                write!(stdout, "{: <25}", ".".bright_cyan().bold())
+                    .expect("Cannot write to stdout");
+                count += 50;
+
+                for file in &self.hidden_folders {
+                    if width - count < 40 {
+                        writeln!(stdout, "").expect("Cannot write to stdout");
+                        count = 0;
+                    }
+
+                    write!(stdout, "{: <25}", file.bright_cyan().bold())
+                        .expect("Cannot write to stdout");
+
+                    count += 25;
+                }
+            }
+
+            for file in &self.folders {
+                if width - count < 40 {
+                    writeln!(stdout, "").expect("Cannot write to stdout");
+                    count = 0;
+                }
+
+                write!(stdout, "{: <25}", file.green().bold()).expect("Cannot write to stdout");
+
+                count += 25;
+            }
+
+            writeln!(stdout, "").expect("Cannot write to stdout");
+        }
+
+        if !self.hidden_files.is_empty() || !self.files.is_empty() {
+            let mut count = 0;
+            if all {
+                for file in &self.hidden_files {
+                    if width - count < 40 {
+                        writeln!(stdout, "").expect("Cannot write to stdout");
+                        count = 0;
+                    }
+
+                    write!(stdout, "{: <25}", file.bright_cyan()).expect("Cannot write to stdout");
+
+                    count += 25;
+
+                    if width - count < 40 {
+                        writeln!(stdout, "").expect("Cannot write to stdout");
+                        count = 0;
+                    }
+                }
+            }
+
+            for file in &self.files {
+                if width - count < 40 {
+                    writeln!(stdout, "").expect("Cannot write to stdout");
+                    count = 0;
+                }
+
+                write!(stdout, "{: <25}", file).expect("Cannot write to stdout");
+
+                count += 25;
+            }
+
+            writeln!(stdout, "").expect("Cannot write to stdout");
         }
     }
 }

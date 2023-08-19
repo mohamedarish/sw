@@ -1,11 +1,6 @@
-use std::{
-    error, fs,
-    io::{self, Write},
-    result,
-};
+use std::{error, fs, io, result};
 
 use clap::Parser;
-use colored::Colorize;
 use sw::{Cli, Directory};
 
 pub type Error = Box<dyn error::Error>;
@@ -35,75 +30,9 @@ fn main() -> Result<()> {
         fs::read_dir(".").expect("Cannot read the file")
     };
 
-    let directory_content = Directory::from(directory, args.all);
+    let directory_content = Directory::from(directory, args.all, args.list);
 
-    if !directory_content.hidden_folders.is_empty() || !directory_content.folders.is_empty() {
-        let mut count = 0;
-        if args.all {
-            write!(handler, "{: <25}", "..".bright_cyan().bold()).expect("Cannot write to stdout");
-            write!(handler, "{: <25}", ".".bright_cyan().bold()).expect("Cannot write to stdout");
-            count += 50;
-
-            for file in directory_content.hidden_folders {
-                if width - count < 40 {
-                    writeln!(handler, "").expect("Cannot write to stdout");
-                    count = 0;
-                }
-
-                write!(handler, "{: <25}", file.bright_cyan().bold())
-                    .expect("Cannot write to stdout");
-
-                count += 25;
-            }
-        }
-
-        for file in directory_content.folders {
-            if width - count < 40 {
-                writeln!(handler, "").expect("Cannot write to stdout");
-                count = 0;
-            }
-
-            write!(handler, "{: <25}", file.green().bold()).expect("Cannot write to stdout");
-
-            count += 25;
-        }
-
-        writeln!(handler, "").expect("Cannot write to stdout");
-    }
-
-    if !directory_content.hidden_files.is_empty() || !directory_content.files.is_empty() {
-        let mut count = 0;
-        if args.all {
-            for file in directory_content.hidden_files {
-                if width - count < 40 {
-                    writeln!(handler, "").expect("Cannot write to stdout");
-                    count = 0;
-                }
-
-                write!(handler, "{: <25}", file.bright_cyan()).expect("Cannot write to stdout");
-
-                count += 25;
-
-                if width - count < 40 {
-                    writeln!(handler, "").expect("Cannot write to stdout");
-                    count = 0;
-                }
-            }
-        }
-
-        for file in directory_content.files {
-            if width - count < 40 {
-                writeln!(handler, "").expect("Cannot write to stdout");
-                count = 0;
-            }
-
-            write!(handler, "{: <25}", file).expect("Cannot write to stdout");
-
-            count += 25;
-        }
-
-        writeln!(handler, "").expect("Cannot write to stdout");
-    }
+    directory_content.print_nlist(&mut handler, width, args.all);
 
     Ok(())
 }
