@@ -1,7 +1,5 @@
 use std::{fs::Metadata, os::unix::prelude::PermissionsExt};
 
-use libc::{S_IRGRP, S_IROTH, S_IRUSR, S_IWGRP, S_IWOTH, S_IWUSR, S_IXGRP, S_IXOTH, S_IXUSR};
-
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Folder {
     pub name: String,
@@ -43,24 +41,9 @@ pub fn parse_permissions(metadata: Metadata) -> String {
         } else {
             String::from("-")
         },
-        triplet(
-            metadata.permissions().mode(),
-            S_IRUSR as u32,
-            S_IWUSR as u32,
-            S_IXUSR as u32,
-        ),
-        triplet(
-            metadata.permissions().mode(),
-            S_IRGRP as u32,
-            S_IWGRP as u32,
-            S_IXGRP as u32,
-        ),
-        triplet(
-            metadata.permissions().mode(),
-            S_IROTH as u32,
-            S_IWOTH as u32,
-            S_IXOTH as u32,
-        ),
+        triplet(metadata.permissions().mode(), 256, 128, 64),
+        triplet(metadata.permissions().mode(), 32, 16, 8),
+        triplet(metadata.permissions().mode(), 4, 2, 1),
     ]
     .join("")
 }
@@ -82,7 +65,6 @@ fn triplet(mode: u32, read: u32, write: u32, execute: u32) -> String {
 mod tests {
     use std::{fs, io, path::PathBuf};
 
-    use libc::{S_IRUSR, S_IWUSR, S_IXUSR};
     use tempfile::TempDir;
 
     use crate::{
@@ -118,8 +100,8 @@ mod tests {
     // Test the 'triplet' function
     #[test]
     fn test_triplet() {
-        let mode = S_IRUSR | S_IWUSR | S_IXUSR;
-        let result = triplet(mode.into(), S_IRUSR as u32, S_IWUSR as u32, S_IXUSR as u32);
+        let mode = 256 | 128 | 64;
+        let result = triplet(mode, 256, 128, 64);
 
         assert_eq!(&result, "rwx");
     }
