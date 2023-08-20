@@ -2,25 +2,37 @@ use std::{fs::Metadata, os::unix::prelude::PermissionsExt};
 
 use libc::{S_IRGRP, S_IROTH, S_IRUSR, S_IWGRP, S_IWOTH, S_IWUSR, S_IXGRP, S_IXOTH, S_IXUSR};
 
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Folder {
-    name: String,
+    pub name: String,
     size: Option<u32>,
+    permissions: Option<String>,
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct File {
-    name: String,
+    pub name: String,
     size: Option<u32>,
+    permissions: Option<String>,
 }
 
 impl Folder {
-    pub fn from(name: String, size: Option<u32>) -> Self {
-        Self { name, size }
+    pub fn from(name: String, size: Option<u32>, permissions: Option<String>) -> Self {
+        Self {
+            name,
+            size,
+            permissions,
+        }
     }
 }
 
 impl File {
-    pub fn from(name: String, size: Option<u32>) -> Self {
-        Self { name, size }
+    pub fn from(name: String, size: Option<u32>, permissions: Option<String>) -> Self {
+        Self {
+            name,
+            size,
+            permissions,
+        }
     }
 }
 

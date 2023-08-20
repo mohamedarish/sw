@@ -5,13 +5,13 @@ use std::{
     io::{StdoutLock, Write},
 };
 
-use crate::support::parse_permissions;
+use crate::{support::parse_permissions, File, Folder};
 
 pub struct Directory {
-    pub folders: BTreeSet<String>,
-    pub hidden_folders: BTreeSet<String>,
-    pub files: BTreeSet<String>,
-    pub hidden_files: BTreeSet<String>,
+    pub folders: BTreeSet<Folder>,
+    pub hidden_folders: BTreeSet<Folder>,
+    pub files: BTreeSet<File>,
+    pub hidden_files: BTreeSet<File>,
 }
 
 impl Directory {
@@ -32,24 +32,24 @@ impl Directory {
                 continue;
             }
 
-            let data = item.metadata().expect("Cannot access metadata");
-
-            let perm_string = parse_permissions(data);
-
-            println!("{perm_string}");
+            // let data = item.metadata().expect("Cannot access metadata");
+            //
+            // let perm_string = parse_permissions(data);
+            //
+            // println!("{perm_string}");
 
             let info = item.file_type().expect("Cannot access info of item");
 
             if hidden && name.chars().nth(0) == Some('.') {
                 if info.is_file() {
-                    hidden_files.insert(name.to_string());
+                    hidden_files.insert(File::from(name.to_string(), None, None));
                 } else if info.is_dir() {
-                    hidden_folders.insert(name.to_string());
+                    hidden_folders.insert(Folder::from(name.to_string(), None, None));
                 }
             } else if info.is_file() {
-                files.insert(name.to_string());
+                files.insert(File::from(name.to_string(), None, None));
             } else if info.is_dir() {
-                folders.insert(name.to_string());
+                folders.insert(Folder::from(name.to_string(), None, None));
             }
         }
 
@@ -77,7 +77,7 @@ impl Directory {
                         count = 0;
                     }
 
-                    write!(stdout, "{: <25}", file.bright_cyan().bold())
+                    write!(stdout, "{: <25}", file.name.bright_cyan().bold())
                         .expect("Cannot write to stdout");
 
                     count += 25;
@@ -90,7 +90,8 @@ impl Directory {
                     count = 0;
                 }
 
-                write!(stdout, "{: <25}", file.green().bold()).expect("Cannot write to stdout");
+                write!(stdout, "{: <25}", file.name.green().bold())
+                    .expect("Cannot write to stdout");
 
                 count += 25;
             }
@@ -107,7 +108,8 @@ impl Directory {
                         count = 0;
                     }
 
-                    write!(stdout, "{: <25}", file.bright_cyan()).expect("Cannot write to stdout");
+                    write!(stdout, "{: <25}", file.name.bright_cyan())
+                        .expect("Cannot write to stdout");
 
                     count += 25;
 
@@ -124,7 +126,7 @@ impl Directory {
                     count = 0;
                 }
 
-                write!(stdout, "{: <25}", file).expect("Cannot write to stdout");
+                write!(stdout, "{: <25}", file.name).expect("Cannot write to stdout");
 
                 count += 25;
             }
@@ -143,11 +145,11 @@ mod tests {
     use tempfile::TempDir;
 
     use crate::Directory;
+    use crate::File;
+    use crate::Folder;
 
     fn create_test_directory(hidden: bool) -> io::Result<TempDir> {
         let temp_dir = TempDir::new()?;
-
-        // Create some test files and directories
 
         if hidden {
             fs::create_dir(temp_dir.path().join(".hidden_folder"))?;
@@ -167,8 +169,8 @@ mod tests {
 
         let directory = Directory::from(root, false, false);
 
-        let expected_folders = vec![String::from("folder1")];
-        let expected_files = vec![String::from("file1.txt")];
+        let expected_folders = vec![Folder::from("folder1".to_string(), None, None)];
+        let expected_files = vec![File::from("file1.txt".to_string(), None, None)];
 
         assert_eq!(directory.folders, BTreeSet::from_iter(expected_folders));
         assert_eq!(directory.hidden_folders, BTreeSet::new());
@@ -183,8 +185,8 @@ mod tests {
 
         let directory = Directory::from(root, true, false);
 
-        let expected_hidden_folders = vec![String::from(".hidden_folder")];
-        let expected_hidden_files = vec![String::from(".hidden_file.txt")];
+        let expected_hidden_folders = vec![Folder::from(".hidden_folder".to_string(), None, None)];
+        let expected_hidden_files = vec![File::from(".hidden_file.txt".to_string(), None, None)];
 
         assert_eq!(directory.folders, BTreeSet::new());
         assert_eq!(
