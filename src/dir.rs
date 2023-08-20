@@ -1,13 +1,15 @@
 use colored::Colorize;
 use std::{
     collections::BTreeSet,
-    fs::ReadDir,
     io::{StdoutLock, Write},
+    path::PathBuf,
 };
 
 use crate::{support::parse_permissions, File, Folder};
 
 pub struct Directory {
+    pub cur_dir: Option<Folder>,
+    pub parent_dir: Option<Folder>,
     pub folders: BTreeSet<Folder>,
     pub hidden_folders: BTreeSet<Folder>,
     pub files: BTreeSet<File>,
@@ -15,13 +17,52 @@ pub struct Directory {
 }
 
 impl Directory {
-    pub fn from(root: ReadDir, hidden: bool, list: bool) -> Self {
+    pub fn from(root: PathBuf, hidden: bool, list: bool) -> Self {
         let mut folders = BTreeSet::new();
         let mut hidden_folders = BTreeSet::new();
         let mut files = BTreeSet::new();
         let mut hidden_files = BTreeSet::new();
 
-        for item in root {
+        let (cur_dir, parent_dir) = if hidden {
+            let name = root
+                .file_name()
+                .expect("Cannot read file name")
+                .to_str()
+                .expect("Cannot access filename")
+                .to_string();
+
+            let parent = root.parent().expect("Cannot access parent");
+
+            let pname = parent
+                .file_name()
+                .expect("Cannot read file name(parent)")
+                .to_str()
+                .expect("Cannot access filename")
+                .to_string();
+
+            let (permissions, size, ppermissions, psize) = if list {
+                let metadata = root.metadata().expect("Cannot access metadata");
+                let pmetadata = parent.metadata().expect("Cannot access parent metadata");
+
+                (
+                    Some(parse_permissions(metadata.clone())),
+                    Some(metadata.len()),
+                    Some(parse_permissions(pmetadata.clone())),
+                    Some(pmetadata.len()),
+                )
+            } else {
+                (None, None, None, None)
+            };
+
+            (
+                Some(Folder::from(name, size, permissions)),
+                Some(Folder::from(pname, psize, ppermissions)),
+            )
+        } else {
+            (None, None)
+        };
+
+        for item in root.read_dir().expect("Cannot read directory") {
             let item = item.expect("cannot access file");
             let name = item
                 .file_name()
@@ -32,28 +73,35 @@ impl Directory {
                 continue;
             }
 
-            // let data = item.metadata().expect("Cannot access metadata");
-            //
-            // let perm_string = parse_permissions(data);
-            //
-            // println!("{perm_string}");
+            let (permissions, size) = if list {
+                let metadata = item.metadata().expect("Cannot access metadata");
+
+                (
+                    Some(parse_permissions(metadata.clone())),
+                    Some(metadata.len()),
+                )
+            } else {
+                (None, None)
+            };
 
             let info = item.file_type().expect("Cannot access info of item");
 
             if hidden && name.chars().nth(0) == Some('.') {
                 if info.is_file() {
-                    hidden_files.insert(File::from(name.to_string(), None, None));
+                    hidden_files.insert(File::from(name.to_string(), size, permissions));
                 } else if info.is_dir() {
-                    hidden_folders.insert(Folder::from(name.to_string(), None, None));
+                    hidden_folders.insert(Folder::from(name.to_string(), size, permissions));
                 }
             } else if info.is_file() {
-                files.insert(File::from(name.to_string(), None, None));
+                files.insert(File::from(name.to_string(), size, permissions));
             } else if info.is_dir() {
-                folders.insert(Folder::from(name.to_string(), None, None));
+                folders.insert(Folder::from(name.to_string(), size, permissions));
             }
         }
 
         Self {
+            cur_dir,
+            parent_dir,
             folders,
             hidden_folders,
             files,
@@ -138,10 +186,10 @@ impl Directory {
 
 #[cfg(test)]
 mod tests {
-
     use std::collections::BTreeSet;
     use std::fs;
     use std::io;
+    use std::path::PathBuf;
     use tempfile::TempDir;
 
     use crate::Directory;
@@ -165,7 +213,7 @@ mod tests {
     #[test]
     fn test_directory_creation_visible() {
         let temp_dir = create_test_directory(false).unwrap();
-        let root = temp_dir.path().read_dir().unwrap();
+        let root = PathBuf::from(temp_dir.path());
 
         let directory = Directory::from(root, false, false);
 
@@ -181,7 +229,7 @@ mod tests {
     #[test]
     fn test_directory_creation_hidden() {
         let temp_dir = create_test_directory(true).unwrap();
-        let root = temp_dir.path().read_dir().unwrap();
+        let root = PathBuf::from(temp_dir.path());
 
         let directory = Directory::from(root, true, false);
 

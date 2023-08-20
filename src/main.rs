@@ -5,7 +5,7 @@
     clippy::unwrap_used
 )]
 
-use std::{error, fs, io, result};
+use std::{env, error, io, result};
 
 use clap::Parser;
 use sw::{Cli, Directory};
@@ -32,14 +32,16 @@ fn main() -> Result<()> {
             return Err(Error::from("Given argument is a dir and not a path"));
         }
 
-        fs::read_dir(dirpath).expect("Cannot read the ")
+        Directory::from(dirpath, args.all, args.list)
     } else {
-        fs::read_dir(".").expect("Cannot read the file")
+        Directory::from(
+            env::current_dir().expect("Cannot access current dir"),
+            args.all,
+            args.list,
+        )
     };
 
-    let directory_content = Directory::from(directory, args.all, args.list);
-
-    directory_content.print_nlist(&mut handler, width, args.all);
+    directory.print_nlist(&mut handler, width, args.all);
 
     Ok(())
 }
