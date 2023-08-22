@@ -10,7 +10,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly-2023-08-14
-          components: clippy
           override: true
       - name: Lint
         run: cargo test --verbose
