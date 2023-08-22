@@ -40,8 +40,11 @@ fn main() -> Result<()> {
             args.list,
         )
     };
-
-    directory.print_nlist(&mut handler, width, args.all);
+    if args.list {
+        directory.print_list(&mut handler, args.all);
+    } else {
+        directory.print_nlist(&mut handler, width, args.all);
+    }
 
     Ok(())
 }

@@ -182,6 +182,88 @@ impl Directory {
             writeln!(stdout).expect("Cannot write to stdout");
         }
     }
+
+    pub fn print_list(&self, stdout: &mut StdoutLock, all: bool) {
+        if !self.hidden_folders.is_empty() || !self.folders.is_empty() {
+            if all {
+                let parent_dir = self
+                    .parent_dir
+                    .as_ref()
+                    .ok_or("Cannot dereference the parent dir")
+                    .expect("The parent dir could not be succesfully dereferenced");
+                writeln!(
+                    stdout,
+                    "{}\t{}\t{: <25}",
+                    parent_dir.permissions(),
+                    parent_dir.size(),
+                    "..".bright_cyan().bold()
+                )
+                .expect("Cannot write to stdout");
+
+                let cur_dir = self
+                    .cur_dir
+                    .as_ref()
+                    .ok_or("Cannot dereference the current dir")
+                    .expect("The current dir could not be dereferences");
+                writeln!(
+                    stdout,
+                    "{}\t{}\t{: <25}",
+                    cur_dir.permissions(),
+                    cur_dir.size(),
+                    ".".bright_cyan().bold()
+                )
+                .expect("Cannot write to stdout");
+
+                for file in &self.hidden_folders {
+                    writeln!(
+                        stdout,
+                        "{}\t{}\t{: <25}",
+                        file.permissions(),
+                        file.size(),
+                        file.name.bright_cyan().bold()
+                    )
+                    .expect("Cannot write to stdout");
+                }
+            }
+
+            for file in &self.folders {
+                writeln!(
+                    stdout,
+                    "{}\t{}\t{: <25}",
+                    file.permissions(),
+                    file.size(),
+                    file.name.green().bold()
+                )
+                .expect("Cannot write to stdout");
+            }
+        }
+
+        if !self.hidden_files.is_empty() || !self.files.is_empty() {
+            if all {
+                for file in &self.hidden_files {
+                    writeln!(
+                        stdout,
+                        "{}\t{}\t{: <25}",
+                        file.permissions(),
+                        file.size(),
+                        file.name.bright_cyan()
+                    )
+                    .expect("Cannot write to stdout");
+                }
+            }
+
+            for file in &self.files {
+                writeln!(
+                    stdout,
+                    "{}\t{}\t{: <25}",
+                    file.permissions(),
+                    file.size(),
+                    file.name
+                )
+                .expect("Cannot write to stdout");
+            }
+        }
+    }
 }
 
 #[cfg(test)]

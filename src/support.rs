@@ -3,15 +3,15 @@ use std::{fs::Metadata, os::unix::prelude::PermissionsExt};
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Folder {
     pub name: String,
-    size: Option<u64>,
-    permissions: Option<String>,
+    pub size: Option<u64>,
+    pub permissions: Option<String>,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct File {
     pub name: String,
-    size: Option<u64>,
-    permissions: Option<String>,
+    pub size: Option<u64>,
+    pub permissions: Option<String>,
 }
 
 impl Folder {
@@ -22,6 +22,20 @@ impl Folder {
             permissions,
         }
     }
+
+    pub fn permissions(&self) -> String {
+        self.permissions
+            .as_deref()
+            .ok_or("No permissions initialized for Folder")
+            .expect("Cannot dereference the field permissions")
+            .to_string()
+    }
+
+    pub fn size(&self) -> u64 {
+        self.size
+            .ok_or("No size initialized")
+            .expect("Cannot dereference the field size")
+    }
 }
 
 impl File {
@@ -31,6 +45,20 @@ impl File {
             size,
             permissions,
         }
+    }
+
+    pub fn permissions(&self) -> String {
+        self.permissions
+            .as_deref()
+            .ok_or("No permissions initialized for Folder")
+            .expect("Cannot dereference the field permissions")
+            .to_string()
+    }
+
+    pub fn size(&self) -> u64 {
+        self.size
+            .ok_or("No size initialized")
+            .expect("Cannot dereference the field size")
     }
 }
 
