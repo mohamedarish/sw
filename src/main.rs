@@ -5,7 +5,7 @@
     clippy::unwrap_used
 )]
 
-use std::{env, error, io, result};
+use std::{env, error, fs, io, result};
 
 use clap::Parser;
 use sw::{Cli, Directory};
@@ -32,7 +32,11 @@ fn main() -> Result<()> {
             return Err(Error::from("Given argument is a dir and not a path"));
         }
 
-        Directory::from(dirpath, args.all, args.list)
+        Directory::from(
+            fs::canonicalize(dirpath).expect("Cannot canonicalize path"),
+            args.all,
+            args.list,
+        )
     } else {
         Directory::from(
             env::current_dir().expect("Cannot access current dir"),

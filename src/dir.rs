@@ -113,10 +113,20 @@ impl Directory {
         if !self.hidden_folders.is_empty() || !self.folders.is_empty() {
             let mut count = 0;
             if all {
-                write!(stdout, "{: <25}", "..".bright_cyan().bold())
-                    .expect("Cannot write to stdout");
-                write!(stdout, "{: <25}", ".".bright_cyan().bold())
-                    .expect("Cannot write to stdout");
+                write!(
+                    stdout,
+                    "{} {: <25}",
+                    "\u{ea83}".bright_green().bold(),
+                    "..".bright_cyan().bold()
+                )
+                .expect("Cannot write to stdout");
+                write!(
+                    stdout,
+                    "{} {: <25}",
+                    "\u{ea83}".bright_green(),
+                    ".".bright_cyan().bold()
+                )
+                .expect("Cannot write to stdout");
                 count += 50;
 
                 for file in &self.hidden_folders {
@@ -125,8 +135,13 @@ impl Directory {
                         count = 0;
                     }
 
-                    write!(stdout, "{: <25}", file.name.bright_cyan().bold())
-                        .expect("Cannot write to stdout");
+                    write!(
+                        stdout,
+                        "{} {: <25}",
+                        "\u{ea83}".bright_green(),
+                        file.name.bright_cyan().bold()
+                    )
+                    .expect("Cannot write to stdout");
 
                     count += 25;
                 }
@@ -138,8 +153,13 @@ impl Directory {
                     count = 0;
                 }
 
-                write!(stdout, "{: <25}", file.name.green().bold())
-                    .expect("Cannot write to stdout");
+                write!(
+                    stdout,
+                    "{} {: <25}",
+                    "\u{ea83}".bright_green(),
+                    file.name.green().bold()
+                )
+                .expect("Cannot write to stdout");
 
                 count += 25;
             }
@@ -156,8 +176,13 @@ impl Directory {
                         count = 0;
                     }
 
-                    write!(stdout, "{: <25}", file.name.bright_cyan())
-                        .expect("Cannot write to stdout");
+                    write!(
+                        stdout,
+                        "{} {: <25}",
+                        "\u{ea7b}".bright_blue(),
+                        file.name.bright_cyan()
+                    )
+                    .expect("Cannot write to stdout");
 
                     count += 25;
 
@@ -174,7 +199,8 @@ impl Directory {
                     count = 0;
                 }
 
-                write!(stdout, "{: <25}", file.name).expect("Cannot write to stdout");
+                write!(stdout, "{} {: <25}", "\u{ea7b}".bright_blue(), file.name)
+                    .expect("Cannot write to stdout");
 
                 count += 25;
             }
@@ -193,9 +219,10 @@ impl Directory {
                     .expect("The parent dir could not be succesfully dereferenced");
                 writeln!(
                     stdout,
-                    "{}\t{}\t{: <25}",
+                    "{}\t{}\t{} {: <25}",
                     parent_dir.permissions(),
                     parent_dir.size(),
+                    "\u{ea83}".bright_green(),
                     "..".bright_cyan().bold()
                 )
                 .expect("Cannot write to stdout");
@@ -207,9 +234,10 @@ impl Directory {
                     .expect("The current dir could not be dereferences");
                 writeln!(
                     stdout,
-                    "{}\t{}\t{: <25}",
+                    "{}\t{}\t{} {: <25}",
                     cur_dir.permissions(),
                     cur_dir.size(),
+                    "\u{ea83}".bright_green(),
                     ".".bright_cyan().bold()
                 )
                 .expect("Cannot write to stdout");
@@ -217,9 +245,10 @@ impl Directory {
                 for file in &self.hidden_folders {
                     writeln!(
                         stdout,
-                        "{}\t{}\t{: <25}",
+                        "{}\t{}\t{} {: <25}",
                         file.permissions(),
                         file.size(),
+                        "\u{ea83}".bright_green(),
                         file.name.bright_cyan().bold()
                     )
                     .expect("Cannot write to stdout");
@@ -229,9 +258,10 @@ impl Directory {
             for file in &self.folders {
                 writeln!(
                     stdout,
-                    "{}\t{}\t{: <25}",
+                    "{}\t{}\t{} {: <25}",
                     file.permissions(),
                     file.size(),
+                    "\u{ea83}".bright_green(),
                     file.name.green().bold()
                 )
                 .expect("Cannot write to stdout");
@@ -243,9 +273,10 @@ impl Directory {
                 for file in &self.hidden_files {
                     writeln!(
                         stdout,
-                        "{}\t{}\t{: <25}",
+                        "{}\t{}\t{} {: <25}",
                         file.permissions(),
                         file.size(),
+                        "\u{ea7b}".bright_blue(),
                         file.name.bright_cyan()
                     )
                     .expect("Cannot write to stdout");
@@ -255,9 +286,10 @@ impl Directory {
             for file in &self.files {
                 writeln!(
                     stdout,
-                    "{}\t{}\t{: <25}",
+                    "{}\t{}\t{} {: <25}",
                     file.permissions(),
                     file.size(),
+                    "\u{ea7b}".bright_blue(),
                     file.name
                 )
                 .expect("Cannot write to stdout");
