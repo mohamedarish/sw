@@ -5,6 +5,7 @@ pub struct Folder {
     pub name: String,
     pub size: Option<u64>,
     pub permissions: Option<String>,
+    pub children: Option<usize>,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -15,11 +16,17 @@ pub struct File {
 }
 
 impl Folder {
-    pub fn from(name: String, size: Option<u64>, permissions: Option<String>) -> Self {
+    pub fn from(
+        name: String,
+        size: Option<u64>,
+        permissions: Option<String>,
+        children: Option<usize>,
+    ) -> Self {
         Self {
             name,
             size,
             permissions,
+            children,
         }
     }
 
@@ -35,6 +42,12 @@ impl Folder {
         self.size
             .ok_or("No size initialized")
             .expect("Cannot dereference the field size")
+    }
+
+    pub fn children(&self) -> usize {
+        self.children
+            .ok_or("No number of children initialized")
+            .expect("Cannot dereference the field children")
     }
 }
 

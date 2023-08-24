@@ -40,23 +40,30 @@ impl Directory {
                 .expect("Cannot access filename")
                 .to_string();
 
-            let (permissions, size, ppermissions, psize) = if list {
+            let (permissions, size, children, ppermissions, psize, pchildren) = if list {
                 let metadata = root.metadata().expect("Cannot access metadata");
                 let pmetadata = parent.metadata().expect("Cannot access parent metadata");
 
                 (
                     Some(parse_permissions(metadata.clone())),
                     Some(metadata.len()),
+                    Some(root.read_dir().expect("Cannot read directory").count()),
                     Some(parse_permissions(pmetadata.clone())),
                     Some(pmetadata.len()),
+                    Some(
+                        parent
+                            .read_dir()
+                            .expect("Cannot read parent directory")
+                            .count(),
+                    ),
                 )
             } else {
-                (None, None, None, None)
+                (None, None, None, None, None, None)
             };
 
             (
-                Some(Folder::from(name, size, permissions)),
-                Some(Folder::from(pname, psize, ppermissions)),
+                Some(Folder::from(name, size, permissions, children)),
+                Some(Folder::from(pname, psize, ppermissions, pchildren)),
             )
         } else {
             (None, None)
@@ -73,15 +80,27 @@ impl Directory {
                 continue;
             }
 
-            let (permissions, size) = if list {
+            let (permissions, size, children) = if list {
                 let metadata = item.metadata().expect("Cannot access metadata");
+
+                let children = if metadata.is_dir() {
+                    Some(
+                        item.path()
+                            .read_dir()
+                            .expect("Cannot read directory")
+                            .count(),
+                    )
+                } else {
+                    None
+                };
 
                 (
                     Some(parse_permissions(metadata.clone())),
                     Some(metadata.len()),
+                    children,
                 )
             } else {
-                (None, None)
+                (None, None, None)
             };
 
             let info = item.file_type().expect("Cannot access info of item");
@@ -90,12 +109,17 @@ impl Directory {
                 if info.is_file() {
                     hidden_files.insert(File::from(name.to_string(), size, permissions));
                 } else if info.is_dir() {
-                    hidden_folders.insert(Folder::from(name.to_string(), size, permissions));
+                    hidden_folders.insert(Folder::from(
+                        name.to_string(),
+                        size,
+                        permissions,
+                        children,
+                    ));
                 }
             } else if info.is_file() {
                 files.insert(File::from(name.to_string(), size, permissions));
             } else if info.is_dir() {
-                folders.insert(Folder::from(name.to_string(), size, permissions));
+                folders.insert(Folder::from(name.to_string(), size, permissions, children));
             }
         }
 
@@ -219,8 +243,9 @@ impl Directory {
                     .expect("The parent dir could not be succesfully dereferenced");
                 writeln!(
                     stdout,
-                    "{}\t{}\t{} {: <25}",
+                    "{}\t{}\t{}\t{} {: <25}",
                     parent_dir.permissions(),
+                    parent_dir.children(),
                     parent_dir.size(),
                     "\u{ea83}".bright_green(),
                     "..".bright_cyan().bold()
@@ -234,8 +259,9 @@ impl Directory {
                     .expect("The current dir could not be dereferences");
                 writeln!(
                     stdout,
-                    "{}\t{}\t{} {: <25}",
+                    "{}\t{}\t{}\t{} {: <25}",
                     cur_dir.permissions(),
+                    cur_dir.children(),
                     cur_dir.size(),
                     "\u{ea83}".bright_green(),
                     ".".bright_cyan().bold()
@@ -245,8 +271,9 @@ impl Directory {
                 for file in &self.hidden_folders {
                     writeln!(
                         stdout,
-                        "{}\t{}\t{} {: <25}",
+                        "{}\t{}\t{}\t{} {: <25}",
                         file.permissions(),
+                        file.children(),
                         file.size(),
                         "\u{ea83}".bright_green(),
                         file.name.bright_cyan().bold()
@@ -258,8 +285,9 @@ impl Directory {
             for file in &self.folders {
                 writeln!(
                     stdout,
-                    "{}\t{}\t{} {: <25}",
+                    "{}\t{}\t{}\t{} {: <25}",
                     file.permissions(),
+                    file.children(),
                     file.size(),
                     "\u{ea83}".bright_green(),
                     file.name.green().bold()
@@ -273,8 +301,9 @@ impl Directory {
                 for file in &self.hidden_files {
                     writeln!(
                         stdout,
-                        "{}\t{}\t{} {: <25}",
+                        "{}\t{}\t{}\t{} {: <25}",
                         file.permissions(),
+                        1,
                         file.size(),
                         "\u{ea7b}".bright_blue(),
                         file.name.bright_cyan()
@@ -286,8 +315,9 @@ impl Directory {
             for file in &self.files {
                 writeln!(
                     stdout,
-                    "{}\t{}\t{} {: <25}",
+                    "{}\t{}\t{}\t{} {: <25}",
                     file.permissions(),
+                    1,
                     file.size(),
                     "\u{ea7b}".bright_blue(),
                     file.name
