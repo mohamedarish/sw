@@ -361,7 +361,7 @@ mod tests {
 
         let directory = Directory::from(root, false, false);
 
-        let expected_folders = vec![Folder::from("folder1".to_string(), None, None)];
+        let expected_folders = vec![Folder::from("folder1".to_string(), None, None, None)];
         let expected_files = vec![File::from("file1.txt".to_string(), None, None)];
 
         assert_eq!(directory.folders, BTreeSet::from_iter(expected_folders));
@@ -377,7 +377,8 @@ mod tests {
 
         let directory = Directory::from(root, true, false);
 
-        let expected_hidden_folders = vec![Folder::from(".hidden_folder".to_string(), None, None)];
+        let expected_hidden_folders =
+            vec![Folder::from(".hidden_folder".to_string(), None, None, None)];
         let expected_hidden_files = vec![File::from(".hidden_file.txt".to_string(), None, None)];
 
         assert_eq!(directory.folders, BTreeSet::new());

@@ -149,7 +149,12 @@ mod tests {
 
     #[test]
     fn test_folder_from() {
-        let folder = Folder::from("my_folder".to_string(), Some(1024), Some("rwx".to_string()));
+        let folder = Folder::from(
+            "my_folder".to_string(),
+            Some(1024),
+            Some("rwx".to_string()),
+            None,
+        );
 
         assert_eq!(folder.name, "my_folder");
         assert_eq!(folder.size, Some(1024));
