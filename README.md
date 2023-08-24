@@ -2,6 +2,8 @@
 
 An ls clone made in rust with minimal features
 
+![image showing the usage of sw command and ls command](./assets/screenshot_sw.png)
+
 ## Build Steps
 
 To install this project and use it on your machine do as follows
