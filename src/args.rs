@@ -59,6 +59,6 @@ mod tests {
         let cli: Cli = Cli::parse_from(args);
 
         assert!(cli.list);
-        assert!(!cli.all);
+        assert!(cli.all);
     }
 }
