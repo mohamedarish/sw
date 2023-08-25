@@ -2,10 +2,10 @@ use colored::Colorize;
 use std::{
     collections::BTreeSet,
     io::{StdoutLock, Write},
-    path::PathBuf,
+    path::Path,
 };
 
-use crate::{support::parse_permissions, File, Folder};
+use crate::support::{convert_size, parse_permissions, File, Folder};
 
 pub struct Directory {
     pub cur_dir: Option<Folder>,
@@ -17,7 +17,10 @@ pub struct Directory {
 }
 
 impl Directory {
-    pub fn from(root: PathBuf, hidden: bool, list: bool) -> Self {
+    /// # Panics
+    /// This function panics if relevant information cannot be found
+    #[must_use]
+    pub fn from(root: &Path, hidden: bool, list: bool) -> Self {
         let mut folders = BTreeSet::new();
         let mut hidden_folders = BTreeSet::new();
         let mut files = BTreeSet::new();
@@ -33,23 +36,21 @@ impl Directory {
 
             let parent = root.parent().expect("Cannot access parent");
 
-            let pname = parent
+            let parent_name = parent
                 .file_name()
                 .expect("Cannot read file name(parent)")
                 .to_str()
                 .expect("Cannot access filename")
                 .to_string();
 
-            let (permissions, size, children, ppermissions, psize, pchildren) = if list {
+            let (permissions, children, parent_permissions, parent_children) = if list {
                 let metadata = root.metadata().expect("Cannot access metadata");
-                let pmetadata = parent.metadata().expect("Cannot access parent metadata");
+                let parent_metadata = parent.metadata().expect("Cannot access parent metadata");
 
                 (
-                    Some(parse_permissions(metadata.clone())),
-                    Some(metadata.len()),
+                    Some(parse_permissions(&metadata)),
                     Some(root.read_dir().expect("Cannot read directory").count()),
-                    Some(parse_permissions(pmetadata.clone())),
-                    Some(pmetadata.len()),
+                    Some(parse_permissions(&parent_metadata)),
                     Some(
                         parent
                             .read_dir()
@@ -58,12 +59,16 @@ impl Directory {
                     ),
                 )
             } else {
-                (None, None, None, None, None, None)
+                (None, None, None, None)
             };
 
             (
-                Some(Folder::from(name, size, permissions, children)),
-                Some(Folder::from(pname, psize, ppermissions, pchildren)),
+                Some(Folder::from(name, permissions, children)),
+                Some(Folder::from(
+                    parent_name,
+                    parent_permissions,
+                    parent_children,
+                )),
             )
         } else {
             (None, None)
@@ -94,11 +99,13 @@ impl Directory {
                     None
                 };
 
-                (
-                    Some(parse_permissions(metadata.clone())),
-                    Some(metadata.len()),
-                    children,
-                )
+                let size = if metadata.is_file() {
+                    Some(metadata.len())
+                } else {
+                    None
+                };
+
+                (Some(parse_permissions(&metadata)), size, children)
             } else {
                 (None, None, None)
             };
@@ -109,17 +116,12 @@ impl Directory {
                 if info.is_file() {
                     hidden_files.insert(File::from(name.to_string(), size, permissions));
                 } else if info.is_dir() {
-                    hidden_folders.insert(Folder::from(
-                        name.to_string(),
-                        size,
-                        permissions,
-                        children,
-                    ));
+                    hidden_folders.insert(Folder::from(name.to_string(), permissions, children));
                 }
             } else if info.is_file() {
                 files.insert(File::from(name.to_string(), size, permissions));
             } else if info.is_dir() {
-                folders.insert(Folder::from(name.to_string(), size, permissions, children));
+                folders.insert(Folder::from(name.to_string(), permissions, children));
             }
         }
 
@@ -280,16 +282,7 @@ impl Directory {
             .ok_or("Cannot dereference the parent dir")
             .expect("The parent dir could not be successfully dereferenced");
 
-        writeln!(
-            stdout,
-            "{}\t{}\t{}\t{} {: <25}",
-            parent_dir.permissions(),
-            parent_dir.children(),
-            parent_dir.size(),
-            "\u{ea83}".bright_green(),
-            "..".bright_cyan().bold()
-        )
-        .expect("Cannot write to stdout");
+        Self::print_list_folder(parent_dir, stdout).expect("Cannot write to stdout");
 
         let cur_dir = self
             .cur_dir
@@ -297,74 +290,53 @@ impl Directory {
             .ok_or("Cannot dereference the current dir")
             .expect("The current dir could not be dereferences");
 
-        writeln!(
-            stdout,
-            "{}\t{}\t{}\t{} {: <25}",
-            cur_dir.permissions(),
-            cur_dir.children(),
-            cur_dir.size(),
-            "\u{ea83}".bright_green(),
-            ".".bright_cyan().bold()
-        )
-        .expect("Cannot write to stdout");
+        Self::print_list_folder(cur_dir, stdout).expect("Cannot write to stdout");
 
         for file in &self.hidden_folders {
-            writeln!(
-                stdout,
-                "{}\t{}\t{}\t{} {: <25}",
-                file.permissions(),
-                file.children(),
-                file.size(),
-                "\u{ea83}".bright_green(),
-                file.name.bright_cyan().bold()
-            )
-            .expect("Cannot write to stdout");
+            Self::print_list_folder(file, stdout).expect("Cannot write to stdout");
         }
     }
 
     fn print_visible_folders_list(&self, stdout: &mut StdoutLock) {
         for file in &self.folders {
-            writeln!(
-                stdout,
-                "{}\t{}\t{}\t{} {: <25}",
-                file.permissions(),
-                file.children(),
-                file.size(),
-                "\u{ea83}".bright_green(),
-                file.name.green().bold()
-            )
-            .expect("Cannot write to stdout");
+            Self::print_list_folder(file, stdout).expect("Cannot write to stdout");
         }
     }
 
     fn print_hidden_files_list(&self, stdout: &mut StdoutLock) {
         for file in &self.hidden_files {
-            writeln!(
-                stdout,
-                "{}\t{}\t{}\t{} {: <25}",
-                file.permissions(),
-                1,
-                file.size(),
-                "\u{ea7b}".bright_blue(),
-                file.name.bright_cyan()
-            )
-            .expect("Cannot write to stdout");
+            Self::print_list_file(file, stdout).expect("Cannot write to stdout");
         }
     }
 
     fn print_visible_files_list(&self, stdout: &mut StdoutLock) {
         for file in &self.files {
-            writeln!(
-                stdout,
-                "{}\t{}\t{}\t{} {: <25}",
-                file.permissions(),
-                1,
-                file.size(),
-                "\u{ea7b}".bright_blue(),
-                file.name
-            )
-            .expect("Cannot write to stdout");
+            Self::print_list_file(file, stdout).expect("Cannot write to stdout");
         }
+    }
+
+    fn print_list_file(file: &File, stdout: &mut StdoutLock) -> Result<(), std::io::Error> {
+        writeln!(
+            stdout,
+            "{} {: <4}{: <6}{} {: <25}",
+            file.permissions(),
+            1,
+            convert_size(file.size()),
+            "\u{ea7b}".bright_blue(),
+            file.name.blue()
+        )
+    }
+
+    fn print_list_folder(file: &Folder, stdout: &mut StdoutLock) -> Result<(), std::io::Error> {
+        writeln!(
+            stdout,
+            "{} {: <4}{: <6}{} {: <25}",
+            file.permissions(),
+            file.children(),
+            '-',
+            "\u{ea83}".bright_green(),
+            file.name.green().bold()
+        )
     }
 }
 
@@ -376,9 +348,9 @@ mod tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
 
-    use crate::Directory;
-    use crate::File;
-    use crate::Folder;
+    use crate::dir::Directory;
+    use crate::support::File;
+    use crate::support::Folder;
 
     fn create_test_directory(hidden: bool) -> io::Result<TempDir> {
         let temp_dir = TempDir::new()?;
@@ -399,9 +371,9 @@ mod tests {
         let temp_dir = create_test_directory(false).unwrap();
         let root = PathBuf::from(temp_dir.path());
 
-        let directory = Directory::from(root, false, false);
+        let directory = Directory::from(&root, false, false);
 
-        let expected_folders = vec![Folder::from("folder1".to_string(), None, None, None)];
+        let expected_folders = vec![Folder::from("folder1".to_string(), None, None)];
         let expected_files = vec![File::from("file1.txt".to_string(), None, None)];
 
         assert_eq!(directory.folders, BTreeSet::from_iter(expected_folders));
@@ -415,10 +387,9 @@ mod tests {
         let temp_dir = create_test_directory(true).unwrap();
         let root = PathBuf::from(temp_dir.path());
 
-        let directory = Directory::from(root, true, false);
+        let directory = Directory::from(&root, true, false);
 
-        let expected_hidden_folders =
-            vec![Folder::from(".hidden_folder".to_string(), None, None, None)];
+        let expected_hidden_folders = vec![Folder::from(".hidden_folder".to_string(), None, None)];
         let expected_hidden_files = vec![File::from(".hidden_file.txt".to_string(), None, None)];
 
         assert_eq!(directory.folders, BTreeSet::new());

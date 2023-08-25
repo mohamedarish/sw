@@ -1,35 +1,34 @@
 use std::{fs::Metadata, os::unix::prelude::PermissionsExt};
 
+const SIZE_HELPER: [char; 6] = ['b', 'k', 'm', 'g', 't', 'p'];
+
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Folder {
     pub name: String,
-    pub size: Option<u64>,
-    pub permissions: Option<String>,
-    pub children: Option<usize>,
+    permissions: Option<String>,
+    children: Option<usize>,
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct File {
     pub name: String,
-    pub size: Option<u64>,
-    pub permissions: Option<String>,
+    size: Option<u64>,
+    permissions: Option<String>,
 }
 
 impl Folder {
-    pub fn from(
-        name: String,
-        size: Option<u64>,
-        permissions: Option<String>,
-        children: Option<usize>,
-    ) -> Self {
+    #[must_use]
+    pub const fn from(name: String, permissions: Option<String>, children: Option<usize>) -> Self {
         Self {
             name,
-            size,
             permissions,
             children,
         }
     }
 
+    /// # Panics
+    /// This function may panic if it cannot dereference the permission `String`
+    #[must_use]
     pub fn permissions(&self) -> String {
         self.permissions
             .as_deref()
@@ -38,12 +37,9 @@ impl Folder {
             .to_string()
     }
 
-    pub fn size(&self) -> u64 {
-        self.size
-            .ok_or("No size initialized")
-            .expect("Cannot dereference the field size")
-    }
-
+    /// # Panics
+    /// This function may panic if it cannot dereference the number of children `usize`
+    #[must_use]
     pub fn children(&self) -> usize {
         self.children
             .ok_or("No number of children initialized")
@@ -52,7 +48,8 @@ impl Folder {
 }
 
 impl File {
-    pub fn from(name: String, size: Option<u64>, permissions: Option<String>) -> Self {
+    #[must_use]
+    pub const fn from(name: String, size: Option<u64>, permissions: Option<String>) -> Self {
         Self {
             name,
             size,
@@ -60,6 +57,9 @@ impl File {
         }
     }
 
+    /// # Panics
+    /// This function may panic if it cannot dereference the permission `String`
+    #[must_use]
     pub fn permissions(&self) -> String {
         self.permissions
             .as_deref()
@@ -68,6 +68,9 @@ impl File {
             .to_string()
     }
 
+    /// # Panics
+    /// This function may panic if it cannot dereference the size `u64`
+    #[must_use]
     pub fn size(&self) -> u64 {
         self.size
             .ok_or("No size initialized")
@@ -75,7 +78,8 @@ impl File {
     }
 }
 
-pub fn parse_permissions(metadata: Metadata) -> String {
+#[must_use]
+pub fn parse_permissions(metadata: &Metadata) -> String {
     [
         if metadata.is_dir() {
             String::from("d")
@@ -87,6 +91,18 @@ pub fn parse_permissions(metadata: Metadata) -> String {
         triplet(metadata.permissions().mode(), 4, 2, 1),
     ]
     .join("")
+}
+
+#[must_use]
+pub fn convert_size(size: u64) -> String {
+    let mut new_size = size;
+    let mut post = 0;
+    while new_size > 1024 {
+        new_size /= 1024;
+        post += 1;
+    }
+
+    format!("{}{}", new_size, SIZE_HELPER[post])
 }
 
 fn triplet(mode: u32, read: u32, write: u32, execute: u32) -> String {
@@ -108,10 +124,7 @@ mod tests {
 
     use tempfile::TempDir;
 
-    use crate::{
-        support::{parse_permissions, triplet},
-        File, Folder,
-    };
+    use crate::support::{parse_permissions, triplet, File, Folder};
 
     fn create_test_directory(hidden: bool) -> io::Result<TempDir> {
         let temp_dir = TempDir::new()?;
@@ -129,11 +142,11 @@ mod tests {
 
     #[test]
     fn test_parse_permissions() {
-        let temp_file = create_test_directory(false).unwrap();
+        let temp_file = create_test_directory(false).expect("Cannot create the test directory");
         let root = PathBuf::from(temp_file.path());
         let metadata = root.metadata().expect("Failed to get metadata");
 
-        let parsed_permissions = parse_permissions(metadata);
+        let parsed_permissions = parse_permissions(&metadata);
 
         assert_eq!(parsed_permissions, String::from("drwxr-xr-x"));
     }
@@ -147,21 +160,6 @@ mod tests {
         assert_eq!(&result, "rwx");
     }
 
-    #[test]
-    fn test_folder_from() {
-        let folder = Folder::from(
-            "my_folder".to_string(),
-            Some(1024),
-            Some("rwx".to_string()),
-            None,
-        );
-
-        assert_eq!(folder.name, "my_folder");
-        assert_eq!(folder.size, Some(1024));
-        assert_eq!(folder.permissions, Some("rwx".to_string()));
-    }
-
-    // Test the 'File::from' function
     #[test]
     fn test_file_from() {
         let file = File::from(
@@ -179,12 +177,10 @@ mod tests {
     fn test_folder_creation() {
         let folder = Folder::from(
             "my_folder".to_string(),
-            Some(1024),
             Some("rwxr-xr-x".to_string()),
             Some(5),
         );
         assert_eq!(folder.name, "my_folder");
-        assert_eq!(folder.size(), 1024);
         assert_eq!(folder.permissions(), "rwxr-xr-x");
         assert_eq!(folder.children(), 5);
     }

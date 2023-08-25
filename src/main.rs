@@ -5,10 +5,15 @@
     clippy::unwrap_used
 )]
 
+pub mod args;
+pub mod dir;
+pub mod support;
+
 use std::{env, error, fs, io, result};
 
+use args::Cli;
 use clap::Parser;
-use sw::{Cli, Directory};
+use dir::Directory;
 
 pub type Error = Box<dyn error::Error>;
 pub type Result<T> = result::Result<T, Error>;
@@ -33,13 +38,13 @@ fn main() -> Result<()> {
         }
 
         Directory::from(
-            fs::canonicalize(dirpath).expect("Cannot canonicalize path"),
+            &fs::canonicalize(dirpath).expect("Cannot canonicalize path"),
             args.all,
             args.list,
         )
     } else {
         Directory::from(
-            env::current_dir().expect("Cannot access current dir"),
+            &env::current_dir().expect("Cannot access current dir"),
             args.all,
             args.list,
         )
