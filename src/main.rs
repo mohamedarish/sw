@@ -17,7 +17,7 @@ fn main() -> Result<()> {
     let stdout = io::stdout();
     let mut handler = stdout.lock();
 
-    let width: usize;
+    let width;
 
     if let Some((w, _)) = term_size::dimensions() {
         width = w;
@@ -44,11 +44,8 @@ fn main() -> Result<()> {
             args.list,
         )
     };
-    if args.list {
-        directory.print_list(&mut handler, args.all);
-    } else {
-        directory.print_nlist(&mut handler, width, args.all);
-    }
+
+    directory.display_output(&mut handler, width, args.all, args.list);
 
     Ok(())
 }

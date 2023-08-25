@@ -174,4 +174,30 @@ mod tests {
         assert_eq!(file.size, Some(512));
         assert_eq!(file.permissions, Some("rw-".to_string()));
     }
+
+    #[test]
+    fn test_folder_creation() {
+        let folder = Folder::from(
+            "my_folder".to_string(),
+            Some(1024),
+            Some("rwxr-xr-x".to_string()),
+            Some(5),
+        );
+        assert_eq!(folder.name, "my_folder");
+        assert_eq!(folder.size(), 1024);
+        assert_eq!(folder.permissions(), "rwxr-xr-x");
+        assert_eq!(folder.children(), 5);
+    }
+
+    #[test]
+    fn test_file_creation() {
+        let file = File::from(
+            "my_file.txt".to_string(),
+            Some(512),
+            Some("-rw-r--r--".to_string()),
+        );
+        assert_eq!(file.name, "my_file.txt");
+        assert_eq!(file.size(), 512);
+        assert_eq!(file.permissions(), "-rw-r--r--");
+    }
 }

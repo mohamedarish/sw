@@ -133,197 +133,237 @@ impl Directory {
         }
     }
 
-    pub fn print_nlist(&self, stdout: &mut StdoutLock, width: usize, all: bool) {
+    pub fn display_output(&self, stdout: &mut StdoutLock, width: usize, all: bool, list: bool) {
+        if list {
+            self.print_list(stdout, all);
+        } else {
+            self.print_nlist(stdout, width, all);
+        }
+    }
+
+    fn print_nlist(&self, stdout: &mut StdoutLock, width: usize, all: bool) {
+        let mut count = 0;
+
         if !self.hidden_folders.is_empty() || !self.folders.is_empty() {
-            let mut count = 0;
             if all {
-                write!(
-                    stdout,
-                    "{} {: <25}",
-                    "\u{ea83}".bright_green().bold(),
-                    "..".bright_cyan().bold()
-                )
-                .expect("Cannot write to stdout");
-                write!(
-                    stdout,
-                    "{} {: <25}",
-                    "\u{ea83}".bright_green(),
-                    ".".bright_cyan().bold()
-                )
-                .expect("Cannot write to stdout");
-                count += 50;
-
-                for file in &self.hidden_folders {
-                    if width - count < 40 {
-                        writeln!(stdout).expect("Cannot write to stdout");
-                        count = 0;
-                    }
-
-                    write!(
-                        stdout,
-                        "{} {: <25}",
-                        "\u{ea83}".bright_green(),
-                        file.name.bright_cyan().bold()
-                    )
-                    .expect("Cannot write to stdout");
-
-                    count += 25;
-                }
+                self.print_hidden_folders(stdout, &mut count, width);
             }
 
-            for file in &self.folders {
-                if width - count < 40 {
-                    writeln!(stdout).expect("Cannot write to stdout");
-                    count = 0;
-                }
-
-                write!(
-                    stdout,
-                    "{} {: <25}",
-                    "\u{ea83}".bright_green(),
-                    file.name.green().bold()
-                )
-                .expect("Cannot write to stdout");
-
-                count += 25;
-            }
-
-            writeln!(stdout).expect("Cannot write to stdout");
+            self.print_visible_folders(stdout, &mut count, width);
         }
 
         if !self.hidden_files.is_empty() || !self.files.is_empty() {
-            let mut count = 0;
             if all {
-                for file in &self.hidden_files {
-                    if width - count < 40 {
-                        writeln!(stdout).expect("Cannot write to stdout");
-                        count = 0;
-                    }
-
-                    write!(
-                        stdout,
-                        "{} {: <25}",
-                        "\u{ea7b}".bright_blue(),
-                        file.name.bright_cyan()
-                    )
-                    .expect("Cannot write to stdout");
-
-                    count += 25;
-
-                    if width - count < 40 {
-                        writeln!(stdout).expect("Cannot write to stdout");
-                        count = 0;
-                    }
-                }
+                self.print_hidden_files(stdout, &mut count, width);
             }
 
-            for file in &self.files {
-                if width - count < 40 {
-                    writeln!(stdout).expect("Cannot write to stdout");
-                    count = 0;
-                }
-
-                write!(stdout, "{} {: <25}", "\u{ea7b}".bright_blue(), file.name)
-                    .expect("Cannot write to stdout");
-
-                count += 25;
-            }
+            self.print_visible_files(stdout, &mut count, width);
 
             writeln!(stdout).expect("Cannot write to stdout");
         }
     }
 
-    pub fn print_list(&self, stdout: &mut StdoutLock, all: bool) {
+    fn print_list(&self, stdout: &mut StdoutLock, all: bool) {
         if !self.hidden_folders.is_empty() || !self.folders.is_empty() {
             if all {
-                let parent_dir = self
-                    .parent_dir
-                    .as_ref()
-                    .ok_or("Cannot dereference the parent dir")
-                    .expect("The parent dir could not be succesfully dereferenced");
-                writeln!(
-                    stdout,
-                    "{}\t{}\t{}\t{} {: <25}",
-                    parent_dir.permissions(),
-                    parent_dir.children(),
-                    parent_dir.size(),
-                    "\u{ea83}".bright_green(),
-                    "..".bright_cyan().bold()
-                )
-                .expect("Cannot write to stdout");
-
-                let cur_dir = self
-                    .cur_dir
-                    .as_ref()
-                    .ok_or("Cannot dereference the current dir")
-                    .expect("The current dir could not be dereferences");
-                writeln!(
-                    stdout,
-                    "{}\t{}\t{}\t{} {: <25}",
-                    cur_dir.permissions(),
-                    cur_dir.children(),
-                    cur_dir.size(),
-                    "\u{ea83}".bright_green(),
-                    ".".bright_cyan().bold()
-                )
-                .expect("Cannot write to stdout");
-
-                for file in &self.hidden_folders {
-                    writeln!(
-                        stdout,
-                        "{}\t{}\t{}\t{} {: <25}",
-                        file.permissions(),
-                        file.children(),
-                        file.size(),
-                        "\u{ea83}".bright_green(),
-                        file.name.bright_cyan().bold()
-                    )
-                    .expect("Cannot write to stdout");
-                }
+                self.print_hidden_folders_list(stdout);
             }
 
-            for file in &self.folders {
-                writeln!(
-                    stdout,
-                    "{}\t{}\t{}\t{} {: <25}",
-                    file.permissions(),
-                    file.children(),
-                    file.size(),
-                    "\u{ea83}".bright_green(),
-                    file.name.green().bold()
-                )
-                .expect("Cannot write to stdout");
-            }
+            self.print_visible_folders_list(stdout);
         }
 
         if !self.hidden_files.is_empty() || !self.files.is_empty() {
             if all {
-                for file in &self.hidden_files {
-                    writeln!(
-                        stdout,
-                        "{}\t{}\t{}\t{} {: <25}",
-                        file.permissions(),
-                        1,
-                        file.size(),
-                        "\u{ea7b}".bright_blue(),
-                        file.name.bright_cyan()
-                    )
-                    .expect("Cannot write to stdout");
-                }
+                self.print_hidden_files_list(stdout);
             }
 
-            for file in &self.files {
-                writeln!(
-                    stdout,
-                    "{}\t{}\t{}\t{} {: <25}",
-                    file.permissions(),
-                    1,
-                    file.size(),
-                    "\u{ea7b}".bright_blue(),
-                    file.name
-                )
-                .expect("Cannot write to stdout");
+            self.print_visible_files_list(stdout);
+        }
+    }
+
+    fn print_hidden_folders(&self, stdout: &mut StdoutLock, count: &mut usize, width: usize) {
+        write!(
+            stdout,
+            "{} {: <25}",
+            "\u{ea83}".bright_green().bold(),
+            "..".bright_cyan().bold()
+        )
+        .expect("Cannot write to stdout");
+        write!(
+            stdout,
+            "{} {: <25}",
+            "\u{ea83}".bright_green(),
+            ".".bright_cyan().bold()
+        )
+        .expect("Cannot write to stdout");
+        *count += 50;
+
+        for file in &self.hidden_folders {
+            if width - *count < 40 {
+                writeln!(stdout).expect("Cannot write to stdout");
+                *count = 0;
             }
+
+            write!(
+                stdout,
+                "{} {: <25}",
+                "\u{ea83}".bright_green(),
+                file.name.bright_cyan().bold()
+            )
+            .expect("Cannot write to stdout");
+
+            *count += 25;
+        }
+    }
+
+    fn print_visible_folders(&self, stdout: &mut StdoutLock, count: &mut usize, width: usize) {
+        for file in &self.folders {
+            if width - *count < 40 {
+                writeln!(stdout).expect("Cannot write to stdout");
+                *count = 0;
+            }
+
+            write!(
+                stdout,
+                "{} {: <25}",
+                "\u{ea83}".bright_green(),
+                file.name.green().bold()
+            )
+            .expect("Cannot write to stdout");
+
+            *count += 25;
+        }
+    }
+
+    fn print_hidden_files(&self, stdout: &mut StdoutLock, count: &mut usize, width: usize) {
+        for file in &self.hidden_files {
+            if width - *count < 40 {
+                writeln!(stdout).expect("Cannot write to stdout");
+                *count = 0;
+            }
+
+            write!(
+                stdout,
+                "{} {: <25}",
+                "\u{ea7b}".bright_blue(),
+                file.name.bright_cyan()
+            )
+            .expect("Cannot write to stdout");
+
+            *count += 25;
+
+            if width - *count < 40 {
+                writeln!(stdout).expect("Cannot write to stdout");
+                *count = 0;
+            }
+        }
+    }
+
+    fn print_visible_files(&self, stdout: &mut StdoutLock, count: &mut usize, width: usize) {
+        for file in &self.files {
+            if width - *count < 40 {
+                writeln!(stdout).expect("Cannot write to stdout");
+                *count = 0;
+            }
+
+            write!(stdout, "{} {: <25}", "\u{ea7b}".bright_blue(), file.name)
+                .expect("Cannot write to stdout");
+
+            *count += 25;
+        }
+    }
+
+    fn print_hidden_folders_list(&self, stdout: &mut StdoutLock) {
+        let parent_dir = self
+            .parent_dir
+            .as_ref()
+            .ok_or("Cannot dereference the parent dir")
+            .expect("The parent dir could not be successfully dereferenced");
+
+        writeln!(
+            stdout,
+            "{}\t{}\t{}\t{} {: <25}",
+            parent_dir.permissions(),
+            parent_dir.children(),
+            parent_dir.size(),
+            "\u{ea83}".bright_green(),
+            "..".bright_cyan().bold()
+        )
+        .expect("Cannot write to stdout");
+
+        let cur_dir = self
+            .cur_dir
+            .as_ref()
+            .ok_or("Cannot dereference the current dir")
+            .expect("The current dir could not be dereferences");
+
+        writeln!(
+            stdout,
+            "{}\t{}\t{}\t{} {: <25}",
+            cur_dir.permissions(),
+            cur_dir.children(),
+            cur_dir.size(),
+            "\u{ea83}".bright_green(),
+            ".".bright_cyan().bold()
+        )
+        .expect("Cannot write to stdout");
+
+        for file in &self.hidden_folders {
+            writeln!(
+                stdout,
+                "{}\t{}\t{}\t{} {: <25}",
+                file.permissions(),
+                file.children(),
+                file.size(),
+                "\u{ea83}".bright_green(),
+                file.name.bright_cyan().bold()
+            )
+            .expect("Cannot write to stdout");
+        }
+    }
+
+    fn print_visible_folders_list(&self, stdout: &mut StdoutLock) {
+        for file in &self.folders {
+            writeln!(
+                stdout,
+                "{}\t{}\t{}\t{} {: <25}",
+                file.permissions(),
+                file.children(),
+                file.size(),
+                "\u{ea83}".bright_green(),
+                file.name.green().bold()
+            )
+            .expect("Cannot write to stdout");
+        }
+    }
+
+    fn print_hidden_files_list(&self, stdout: &mut StdoutLock) {
+        for file in &self.hidden_files {
+            writeln!(
+                stdout,
+                "{}\t{}\t{}\t{} {: <25}",
+                file.permissions(),
+                1,
+                file.size(),
+                "\u{ea7b}".bright_blue(),
+                file.name.bright_cyan()
+            )
+            .expect("Cannot write to stdout");
+        }
+    }
+
+    fn print_visible_files_list(&self, stdout: &mut StdoutLock) {
+        for file in &self.files {
+            writeln!(
+                stdout,
+                "{}\t{}\t{}\t{} {: <25}",
+                file.permissions(),
+                1,
+                file.size(),
+                "\u{ea7b}".bright_blue(),
+                file.name
+            )
+            .expect("Cannot write to stdout");
         }
     }
 }
