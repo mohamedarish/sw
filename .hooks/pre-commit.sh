@@ -1,4 +1,4 @@
-#!/usr/bin/sh
+#!/usr/bin/env sh
 
 cargo fmt --check --all || exit 1
 cargo clippy || exit 1
