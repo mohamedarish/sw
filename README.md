@@ -6,7 +6,7 @@ An ls clone made in rust with minimal features
 
 ## Requirements
 
-- A [NerdFont](https://www.nerdfonts.com/) for displaying the icons (  &nbsp; &
+- A [NerdFont](https://www.nerdfonts.com/) for displaying the icons (  &nbsp;&
    )
 
 If you can see these in your browser, then your browser uses a nerdfont as
