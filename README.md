@@ -6,7 +6,8 @@ An ls clone made in rust with minimal features
 
 ## Requirements
 
-- A [NerdFont](https://www.nerdfonts.com/) for displaying the icons (  &  )
+- A [NerdFont](https://www.nerdfonts.com/) for displaying the icons (  &nbsp; &
+   )
 
 If you can see these in your browser, then your browser uses a nerdfont as
 default font
@@ -43,4 +44,5 @@ cargo instal --path ./sw
 
 ## Contributing
 
-  If you want to contribute to sw, you can find more info in [CONTRIBUTING.md](./CONTRIBUTING.md)
+If you want to contribute to sw, you can find more info in
+[CONTRIBUTING.md](./CONTRIBUTING.md)
