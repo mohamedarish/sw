@@ -40,3 +40,7 @@ cargo instal --path ./sw
   ```sh
   echo "path+=$HOME/.cargo/bin" >> ~/.zshrc
   ```
+
+## Contributing
+
+  If you want to contribute to sw, you can find more info in [CONTRIBUTING.md](./CONTRIBUTING.md)

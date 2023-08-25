@@ -14,4 +14,10 @@ rustup component add clippy
 
 Make sure you have [rust](https://www.rust-lang.org/tools/install) installed
 
+Make sure you've given the necessary permissions to the pre-commit hooks
+
+```sh
+chmod 500 ./scripts/setup-hooks.sh ./.hooks/pre-commit.sh
+```
+
 Thank you for contributing
