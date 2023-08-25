@@ -20,4 +20,6 @@ Make sure you've given the necessary permissions to the pre-commit hooks
 chmod 500 ./scripts/setup-hooks.sh ./.hooks/pre-commit.sh
 ```
 
+Make sure to check for typos (preferably using [typos](https://github.com/crate-ci/typos))
+
 Thank you for contributing

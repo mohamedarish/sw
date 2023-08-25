@@ -368,7 +368,7 @@ mod tests {
 
     #[test]
     fn test_directory_creation_visible() {
-        let temp_dir = create_test_directory(false).unwrap();
+        let temp_dir = create_test_directory(false).expect("Cannot create a test directory");
         let root = PathBuf::from(temp_dir.path());
 
         let directory = Directory::from(&root, false, false);
@@ -384,7 +384,7 @@ mod tests {
 
     #[test]
     fn test_directory_creation_hidden() {
-        let temp_dir = create_test_directory(true).unwrap();
+        let temp_dir = create_test_directory(true).expect("Cannot create a test directory");
         let root = PathBuf::from(temp_dir.path());
 
         let directory = Directory::from(&root, true, false);
