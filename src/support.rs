@@ -1,4 +1,4 @@
-use std::{fs::Metadata, os::unix::prelude::PermissionsExt};
+use std::{fs::Metadata, os::unix::prelude::PermissionsExt, path::Path};
 
 const SIZE_HELPER: [char; 6] = ['b', 'k', 'm', 'g', 't', 'p'];
 
@@ -116,6 +116,17 @@ fn triplet(mode: u32, read: u32, write: u32, execute: u32) -> String {
         (_, _, 0) => "rw-",
         (_, _, _) => "rwx",
     })
+}
+
+/// # Panics
+/// panics if it cannot access filename or filename is invalid
+#[must_use]
+pub fn get_file_name(path: &Path) -> String {
+    path.file_name()
+        .expect("Cannot read file name")
+        .to_str()
+        .expect("Cannot convert to str")
+        .to_string()
 }
 
 #[cfg(test)]

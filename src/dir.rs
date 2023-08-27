@@ -5,7 +5,7 @@ use std::{
     path::Path,
 };
 
-use crate::support::{convert_size, parse_permissions, File, Folder};
+use crate::support::{convert_size, get_file_name, parse_permissions, File, Folder};
 
 pub struct Directory {
     pub cur_dir: Option<Folder>,
@@ -14,11 +14,12 @@ pub struct Directory {
     pub hidden_folders: BTreeSet<Folder>,
     pub files: BTreeSet<File>,
     pub hidden_files: BTreeSet<File>,
+    largest_name: usize,
 }
 
 impl Directory {
     /// # Panics
-    /// This function panics if relevant information cannot be found
+    /// This function panics if relevant information cannot be accessed
     #[must_use]
     pub fn from(root: &Path, hidden: bool, list: bool) -> Self {
         let mut folders = BTreeSet::new();
@@ -26,22 +27,14 @@ impl Directory {
         let mut files = BTreeSet::new();
         let mut hidden_files = BTreeSet::new();
 
+        let mut largest_name = if hidden { 2 } else { 0 };
+
         let (cur_dir, parent_dir) = if hidden {
-            let name = root
-                .file_name()
-                .expect("Cannot read file name")
-                .to_str()
-                .expect("Cannot access filename")
-                .to_string();
+            let name = get_file_name(root);
 
             let parent = root.parent().expect("Cannot access parent");
 
-            let parent_name = parent
-                .file_name()
-                .expect("Cannot read file name(parent)")
-                .to_str()
-                .expect("Cannot access filename")
-                .to_string();
+            let parent_name = get_file_name(parent);
 
             let (permissions, children, parent_permissions, parent_children) = if list {
                 let metadata = root.metadata().expect("Cannot access metadata");
@@ -76,10 +69,11 @@ impl Directory {
 
         for item in root.read_dir().expect("Cannot read directory") {
             let item = item.expect("cannot access file");
-            let name = item
-                .file_name()
-                .into_string()
-                .expect("Cannot convert to string");
+            let name = get_file_name(&item.path());
+
+            if name.len() > largest_name {
+                largest_name = name.len();
+            }
 
             if !hidden && name.chars().nth(0) == Some('.') {
                 continue;
@@ -132,7 +126,12 @@ impl Directory {
             hidden_folders,
             files,
             hidden_files,
+            largest_name,
         }
+    }
+
+    const fn max_space(&self) -> usize {
+        self.largest_name + 4
     }
 
     pub fn display_output(&self, stdout: &mut StdoutLock, width: usize, all: bool, list: bool) {
@@ -186,92 +185,90 @@ impl Directory {
     fn print_hidden_folders(&self, stdout: &mut StdoutLock, count: &mut usize, width: usize) {
         write!(
             stdout,
-            "{} {: <25}",
-            "\u{ea83}".bright_green().bold(),
-            "..".bright_cyan().bold()
+            "\x1B[1;92m\u{ea83} \x1B[0 \x1B[1;96m..{}\x1B[0",
+            " ".repeat(self.max_space() - 2)
         )
         .expect("Cannot write to stdout");
         write!(
             stdout,
-            "{} {: <25}",
-            "\u{ea83}".bright_green(),
-            ".".bright_cyan().bold()
+            "\x1B[1;92m\u{ea83} \x1B[0 \x1B[1;96m.{}\x1B[0",
+            " ".repeat(self.max_space() - 1)
         )
         .expect("Cannot write to stdout");
-        *count += 50;
+        *count += self.max_space() * 2;
 
         for file in &self.hidden_folders {
-            if width - *count < 40 {
+            if width - *count < self.max_space() + 4 {
                 writeln!(stdout).expect("Cannot write to stdout");
                 *count = 0;
             }
 
             write!(
                 stdout,
-                "{} {: <25}",
-                "\u{ea83}".bright_green(),
-                file.name.bright_cyan().bold()
+                "\x1B[1;92m\u{ea83} \x1B[0 \x1B[1;96m{}{}\x1B[0",
+                file.name,
+                " ".repeat(self.max_space() - file.name.len())
             )
             .expect("Cannot write to stdout");
 
-            *count += 25;
+            *count += self.max_space() + 4;
         }
     }
 
     fn print_visible_folders(&self, stdout: &mut StdoutLock, count: &mut usize, width: usize) {
         for file in &self.folders {
-            if width - *count < 40 {
+            if width - *count < self.max_space() + 4 {
                 writeln!(stdout).expect("Cannot write to stdout");
                 *count = 0;
             }
 
             write!(
                 stdout,
-                "{} {: <25}",
-                "\u{ea83}".bright_green(),
-                file.name.green().bold()
+                "\x1B[92m\u{ea83} \x1B[0 \x1B[32m{}{}\x1B[0",
+                file.name,
+                " ".repeat(self.max_space() - file.name.len())
             )
             .expect("Cannot write to stdout");
 
-            *count += 25;
+            *count += self.max_space() + 4;
         }
     }
 
     fn print_hidden_files(&self, stdout: &mut StdoutLock, count: &mut usize, width: usize) {
         for file in &self.hidden_files {
-            if width - *count < 40 {
+            if width - *count < self.max_space() + 4 {
                 writeln!(stdout).expect("Cannot write to stdout");
                 *count = 0;
             }
 
             write!(
                 stdout,
-                "{} {: <25}",
-                "\u{ea7b}".bright_blue(),
-                file.name.bright_cyan()
+                "\x1B[94m\u{ea7b} \x1B[0 \x1B[96m{}{}\x1B[0",
+                file.name,
+                " ".repeat(self.max_space() - file.name.len())
             )
             .expect("Cannot write to stdout");
 
-            *count += 25;
-
-            if width - *count < 40 {
-                writeln!(stdout).expect("Cannot write to stdout");
-                *count = 0;
-            }
+            *count += self.max_space() + 4;
         }
     }
 
     fn print_visible_files(&self, stdout: &mut StdoutLock, count: &mut usize, width: usize) {
         for file in &self.files {
-            if width - *count < 40 {
+            if width - *count < self.max_space() + 4 {
                 writeln!(stdout).expect("Cannot write to stdout");
                 *count = 0;
             }
 
-            write!(stdout, "{} {: <25}", "\u{ea7b}".bright_blue(), file.name)
-                .expect("Cannot write to stdout");
+            write!(
+                stdout,
+                "\x1B[94m\u{ea7b} \x1B[0 \x1B[0m{}{}\x1B[0",
+                file.name,
+                " ".repeat(self.max_space() - file.name.len())
+            )
+            .expect("Cannot write to stdout");
 
-            *count += 25;
+            *count += self.max_space() + 4;
         }
     }
 
