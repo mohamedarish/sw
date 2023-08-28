@@ -37,11 +37,12 @@ fn main() -> Result<()> {
             return Err(Error::from("Given argument is a dir and not a path"));
         }
 
-        Directory::from(
-            &fs::canonicalize(dirpath).expect("Cannot canonicalize path"),
-            args.all,
-            args.list,
-        )
+        let path = match fs::canonicalize(dirpath) {
+            Ok(a) => a,
+            Err(e) => return Err(Error::from(e.to_string())),
+        };
+
+        Directory::from(&path, args.all, args.list)
     } else {
         Directory::from(
             &env::current_dir().expect("Cannot access current dir"),

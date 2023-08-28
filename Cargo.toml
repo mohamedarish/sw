@@ -17,7 +17,6 @@ license = "MIT"
 
 [dependencies]
 clap = { version = "4.3.23", features = ["derive"] }
-colored = "2.0.4"
 tempfile = "3.8.0"
 term_size = "0.3.2"
 

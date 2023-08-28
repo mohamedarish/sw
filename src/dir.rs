@@ -1,4 +1,3 @@
-use colored::Colorize;
 use std::{
     collections::BTreeSet,
     io::{StdoutLock, Write},
@@ -30,11 +29,11 @@ impl Directory {
         let mut largest_name = if hidden { 2 } else { 0 };
 
         let (cur_dir, parent_dir) = if hidden {
-            let name = get_file_name(root);
+            let name = format!(".({})", get_file_name(root));
 
             let parent = root.parent().expect("Cannot access parent");
 
-            let parent_name = get_file_name(parent);
+            let parent_name = format!("..({})", get_file_name(parent));
 
             let (permissions, children, parent_permissions, parent_children) = if list {
                 let metadata = root.metadata().expect("Cannot access metadata");
@@ -83,12 +82,9 @@ impl Directory {
                 let metadata = item.metadata().expect("Cannot access metadata");
 
                 let children = if metadata.is_dir() {
-                    Some(
-                        item.path()
-                            .read_dir()
-                            .expect("Cannot read directory")
-                            .count(),
-                    )
+                    let directory = item.path().read_dir().map_or_else(|_| None, Some);
+
+                    directory.map(Iterator::count)
                 } else {
                     None
                 };
@@ -315,24 +311,22 @@ impl Directory {
     fn print_list_file(file: &File, stdout: &mut StdoutLock) -> Result<(), std::io::Error> {
         writeln!(
             stdout,
-            "{} {: <4}{: <6}{} {: <25}",
+            "\x1B[0m{} {: <4}{: <6}\x1B[0 \x1B[94m\u{ea7b} \x1B[0 \x1B[34m{: <25} \x1B[0",
             file.permissions(),
             1,
             convert_size(file.size()),
-            "\u{ea7b}".bright_blue(),
-            file.name.blue()
+            file.name
         )
     }
 
     fn print_list_folder(file: &Folder, stdout: &mut StdoutLock) -> Result<(), std::io::Error> {
         writeln!(
             stdout,
-            "{} {: <4}{: <6}{} {: <25}",
+            "\x1B[0m{} {: <4}{: <6}\x1B[0 \x1B[92m\u{ea83} \x1B[0 \x1B[1;32m{: <25} \x1B[0",
             file.permissions(),
             file.children(),
             '-',
-            "\u{ea83}".bright_green(),
-            file.name.green().bold()
+            file.name
         )
     }
 }

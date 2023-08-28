@@ -43,7 +43,7 @@ impl Folder {
     pub fn children(&self) -> usize {
         self.children
             .ok_or("No number of children initialized")
-            .expect("Cannot dereference the field children")
+            .map_or(0, |num| num)
     }
 }
 
