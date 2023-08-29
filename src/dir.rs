@@ -373,7 +373,7 @@ mod tests {
         let temp_dir = create_test_directory(false).expect("Cannot create a test directory");
         let root = PathBuf::from(temp_dir.path());
 
-        let directory = Directory::from(&root, false, false).expect("Some error occured");
+        let directory = Directory::from(&root, false, false).expect("Some error occurred");
 
         let expected_folders = vec![Folder::from("folder1".to_string(), None, None)];
         let expected_files = vec![File::from("file1.txt".to_string(), None, None)];
@@ -389,7 +389,7 @@ mod tests {
         let temp_dir = create_test_directory(true).expect("Cannot create a test directory");
         let root = PathBuf::from(temp_dir.path());
 
-        let directory = Directory::from(&root, true, false).expect("Some error occured");
+        let directory = Directory::from(&root, true, false).expect("Some error occurred");
 
         let expected_hidden_folders = vec![Folder::from(".hidden_folder".to_string(), None, None)];
         let expected_hidden_files = vec![File::from(".hidden_file.txt".to_string(), None, None)];
