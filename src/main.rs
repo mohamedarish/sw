@@ -51,7 +51,14 @@ fn main() -> Result<()> {
         )
     };
 
-    directory.display_output(&mut handler, width, args.all, args.list);
+    match directory {
+        Ok(d) => {
+            d.display_output(&mut handler, width, args.all, args.list);
+        }
+        Err(e) => {
+            return Err(Error::from(e.to_string()));
+        }
+    }
 
     Ok(())
 }
