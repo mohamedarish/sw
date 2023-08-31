@@ -32,18 +32,14 @@ impl Folder {
     pub fn permissions(&self) -> String {
         self.permissions
             .as_deref()
-            .ok_or("No permissions initialized for Folder")
-            .expect("Cannot dereference the field permissions")
-            .to_string()
+            .map_or("-".repeat(10), ToString::to_string)
     }
 
     /// # Panics
     /// This function may panic if it cannot dereference the number of children `usize`
     #[must_use]
     pub fn children(&self) -> usize {
-        self.children
-            .ok_or("No number of children initialized")
-            .map_or(0, |num| num)
+        self.children.map_or(0, |num| num)
     }
 }
 
@@ -63,18 +59,14 @@ impl File {
     pub fn permissions(&self) -> String {
         self.permissions
             .as_deref()
-            .ok_or("No permissions initialized for Folder")
-            .expect("Cannot dereference the field permissions")
-            .to_string()
+            .map_or(String::new(), ToString::to_string)
     }
 
     /// # Panics
     /// This function may panic if it cannot dereference the size `u64`
     #[must_use]
     pub fn size(&self) -> u64 {
-        self.size
-            .ok_or("No size initialized")
-            .expect("Cannot dereference the field size")
+        self.size.map_or(0, |num| num)
     }
 }
 
@@ -122,11 +114,11 @@ fn triplet(mode: u32, read: u32, write: u32, execute: u32) -> String {
 /// panics if it cannot access filename or filename is invalid
 #[must_use]
 pub fn get_file_name(path: &Path) -> String {
-    path.file_name()
-        .expect("Cannot read file name")
-        .to_str()
-        .expect("Cannot convert to str")
-        .to_string()
+    path.file_name().map_or(String::new(), |file_name| {
+        file_name
+            .to_str()
+            .map_or(String::new(), ToString::to_string)
+    })
 }
 
 #[cfg(test)]

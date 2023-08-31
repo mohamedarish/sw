@@ -44,16 +44,18 @@ fn main() -> Result<()> {
 
         Directory::from(&path, args.all, args.list)
     } else {
-        Directory::from(
-            &env::current_dir().expect("Cannot access current dir"),
-            args.all,
-            args.list,
-        )
+        let Ok(current_dir) = env::current_dir() else {
+            return Err(Error::from("Cannot read current directory ."));
+        };
+
+        Directory::from(&current_dir, args.all, args.list)
     };
 
     match directory {
         Ok(d) => {
-            d.display_output(&mut handler, width, args.all, args.list);
+            let Ok(()) = d.display_output(&mut handler, width, args.all, args.list) else {
+                return Err(Error::from("Cannot print the output in stdout"));
+            };
         }
         Err(e) => {
             return Err(Error::from(e.to_string()));
