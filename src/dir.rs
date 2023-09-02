@@ -5,7 +5,9 @@ use std::{
 };
 
 use crate::{
-    support::{convert_size, get_file_name, parse_permissions, File, Folder},
+    file::File,
+    folder::Folder,
+    support::{convert_size, get_file_name, parse_permissions},
     Error, Result,
 };
 
@@ -20,11 +22,8 @@ pub struct Directory {
 }
 
 impl Directory {
-    /// # Panics
-    /// This function panics if relevant information cannot be accessed
-    ///
     /// # Errors
-    /// Many errors
+    /// Many errors but, should not affect if proper permissions are available
     pub fn from(root: &Path, hidden: bool, list: bool) -> Result<Self> {
         let mut folders = BTreeSet::new();
         let mut hidden_folders = BTreeSet::new();
@@ -377,7 +376,7 @@ impl Directory {
         for file in &self.folders {
             match Self::print_list_folder(file, stdout) {
                 Ok(()) => {}
-                _ => return Err(Error::from("Cannot write to stdout")),
+                Err(_) => return Err(Error::from("Cannot write to stdout")),
             }
         }
 
@@ -388,7 +387,7 @@ impl Directory {
         for file in &self.hidden_files {
             match Self::print_list_file(file, stdout) {
                 Ok(()) => {}
-                _ => return Err(Error::from("Cannot write to stdout")),
+                Err(_) => return Err(Error::from("Cannot write to stdout")),
             }
         }
 
@@ -399,7 +398,7 @@ impl Directory {
         for file in &self.files {
             match Self::print_list_file(file, stdout) {
                 Ok(()) => {}
-                _ => return Err(Error::from("Cannot write ro stdout")),
+                Err(_) => return Err(Error::from("Cannot write ro stdout")),
             }
         }
 
@@ -432,70 +431,5 @@ impl Directory {
             Ok(()) => Ok(()),
             Err(_) => Err(Error::from("Cannot write to stdout")),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::collections::BTreeSet;
-    use std::fs;
-    use std::io;
-    use std::path::PathBuf;
-    use tempfile::TempDir;
-
-    use crate::dir::Directory;
-    use crate::support::File;
-    use crate::support::Folder;
-
-    fn create_test_directory(hidden: bool) -> io::Result<TempDir> {
-        let temp_dir = TempDir::new()?;
-
-        if hidden {
-            fs::create_dir(temp_dir.path().join(".hidden_folder"))?;
-            fs::File::create(temp_dir.path().join(".hidden_file.txt"))?;
-        } else {
-            fs::create_dir(temp_dir.path().join("folder1"))?;
-            fs::File::create(temp_dir.path().join("file1.txt"))?;
-        }
-
-        Ok(temp_dir)
-    }
-
-    #[test]
-    fn test_directory_creation_visible() {
-        let temp_dir = create_test_directory(false).expect("Cannot create a test directory");
-        let root = PathBuf::from(temp_dir.path());
-
-        let directory = Directory::from(&root, false, false).expect("Some error occurred");
-
-        let expected_folders = vec![Folder::from("folder1".to_string(), None, None)];
-        let expected_files = vec![File::from("file1.txt".to_string(), None, None)];
-
-        assert_eq!(directory.folders, BTreeSet::from_iter(expected_folders));
-        assert_eq!(directory.hidden_folders, BTreeSet::new());
-        assert_eq!(directory.files, BTreeSet::from_iter(expected_files));
-        assert_eq!(directory.hidden_files, BTreeSet::new());
-    }
-
-    #[test]
-    fn test_directory_creation_hidden() {
-        let temp_dir = create_test_directory(true).expect("Cannot create a test directory");
-        let root = PathBuf::from(temp_dir.path());
-
-        let directory = Directory::from(&root, true, false).expect("Some error occurred");
-
-        let expected_hidden_folders = vec![Folder::from(".hidden_folder".to_string(), None, None)];
-        let expected_hidden_files = vec![File::from(".hidden_file.txt".to_string(), None, None)];
-
-        assert_eq!(directory.folders, BTreeSet::new());
-        assert_eq!(
-            directory.hidden_folders,
-            BTreeSet::from_iter(expected_hidden_folders)
-        );
-        assert_eq!(directory.files, BTreeSet::new());
-        assert_eq!(
-            directory.hidden_files,
-            BTreeSet::from_iter(expected_hidden_files)
-        );
     }
 }

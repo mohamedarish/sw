@@ -7,6 +7,8 @@
 
 pub mod args;
 pub mod dir;
+pub mod file;
+pub mod folder;
 pub mod support;
 
 use std::{env, error, fs, io, result};
@@ -22,13 +24,9 @@ fn main() -> Result<()> {
     let stdout = io::stdout();
     let mut handler = stdout.lock();
 
-    let width;
-
-    if let Some((w, _)) = term_size::dimensions() {
-        width = w;
-    } else {
-        return Err(Error::from("Cannot get the size of the terminal"));
-    }
+    let Some((width, _)) = term_size::dimensions() else {
+        return Err(Error::from("Cannot get the terminal window size"));
+    };
 
     let args = Cli::parse();
 

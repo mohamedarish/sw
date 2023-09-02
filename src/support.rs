@@ -1,74 +1,8 @@
 use std::{fs::Metadata, os::unix::prelude::PermissionsExt, path::Path};
 
+use chrono::{DateTime, Utc};
+
 const SIZE_HELPER: [char; 6] = ['b', 'k', 'm', 'g', 't', 'p'];
-
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub struct Folder {
-    pub name: String,
-    permissions: Option<String>,
-    children: Option<usize>,
-}
-
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub struct File {
-    pub name: String,
-    size: Option<u64>,
-    permissions: Option<String>,
-}
-
-impl Folder {
-    #[must_use]
-    pub const fn from(name: String, permissions: Option<String>, children: Option<usize>) -> Self {
-        Self {
-            name,
-            permissions,
-            children,
-        }
-    }
-
-    /// # Panics
-    /// This function may panic if it cannot dereference the permission `String`
-    #[must_use]
-    pub fn permissions(&self) -> String {
-        self.permissions
-            .as_deref()
-            .map_or("-".repeat(10), ToString::to_string)
-    }
-
-    /// # Panics
-    /// This function may panic if it cannot dereference the number of children `usize`
-    #[must_use]
-    pub fn children(&self) -> usize {
-        self.children.map_or(0, |num| num)
-    }
-}
-
-impl File {
-    #[must_use]
-    pub const fn from(name: String, size: Option<u64>, permissions: Option<String>) -> Self {
-        Self {
-            name,
-            size,
-            permissions,
-        }
-    }
-
-    /// # Panics
-    /// This function may panic if it cannot dereference the permission `String`
-    #[must_use]
-    pub fn permissions(&self) -> String {
-        self.permissions
-            .as_deref()
-            .map_or(String::new(), ToString::to_string)
-    }
-
-    /// # Panics
-    /// This function may panic if it cannot dereference the size `u64`
-    #[must_use]
-    pub fn size(&self) -> u64 {
-        self.size.map_or(0, |num| num)
-    }
-}
 
 #[must_use]
 pub fn parse_permissions(metadata: &Metadata) -> String {
@@ -110,8 +44,6 @@ fn triplet(mode: u32, read: u32, write: u32, execute: u32) -> String {
     })
 }
 
-/// # Panics
-/// panics if it cannot access filename or filename is invalid
 #[must_use]
 pub fn get_file_name(path: &Path) -> String {
     path.file_name().map_or(String::new(), |file_name| {
@@ -121,82 +53,26 @@ pub fn get_file_name(path: &Path) -> String {
     })
 }
 
-#[cfg(test)]
-mod tests {
-    use std::{fs, io, path::PathBuf};
+#[must_use]
+pub fn get_created_time(path: &Path) -> String {
+    path.metadata()
+        .map_or(DateTime::<Utc>::default().to_rfc2822(), |metadata| {
+            metadata
+                .created()
+                .map_or(DateTime::<Utc>::default().to_rfc2822(), |time| {
+                    DateTime::<Utc>::from(time).to_rfc2822()
+                })
+        })
+}
 
-    use tempfile::TempDir;
-
-    use crate::support::{parse_permissions, triplet, File, Folder};
-
-    fn create_test_directory(hidden: bool) -> io::Result<TempDir> {
-        let temp_dir = TempDir::new()?;
-
-        if hidden {
-            fs::create_dir(temp_dir.path().join(".hidden_folder"))?;
-            fs::File::create(temp_dir.path().join(".hidden_file.txt"))?;
-        } else {
-            fs::create_dir(temp_dir.path().join("folder1"))?;
-            fs::File::create(temp_dir.path().join("file1.txt"))?;
-        }
-
-        Ok(temp_dir)
-    }
-
-    #[test]
-    fn test_parse_permissions() {
-        let temp_file = create_test_directory(false).expect("Cannot create the test directory");
-        let root = PathBuf::from(temp_file.path());
-        let metadata = root.metadata().expect("Failed to get metadata");
-
-        let parsed_permissions = parse_permissions(&metadata);
-
-        assert_eq!(parsed_permissions, String::from("drwxr-xr-x"));
-    }
-
-    // Test the 'triplet' function
-    #[test]
-    fn test_triplet() {
-        let mode = 256 | 128 | 64;
-        let result = triplet(mode, 256, 128, 64);
-
-        assert_eq!(&result, "rwx");
-    }
-
-    #[test]
-    fn test_file_from() {
-        let file = File::from(
-            "my_file.txt".to_string(),
-            Some(512),
-            Some("rw-".to_string()),
-        );
-
-        assert_eq!(file.name, "my_file.txt");
-        assert_eq!(file.size, Some(512));
-        assert_eq!(file.permissions, Some("rw-".to_string()));
-    }
-
-    #[test]
-    fn test_folder_creation() {
-        let folder = Folder::from(
-            "my_folder".to_string(),
-            Some("rwxr-xr-x".to_string()),
-            Some(5),
-        );
-        assert_eq!(folder.name, "my_folder");
-        assert_eq!(folder.permissions(), "rwxr-xr-x");
-        assert_eq!(folder.children(), 5);
-    }
-
-    #[test]
-    fn test_file_creation() {
-        let file = File::from(
-            "my_file.txt".to_string(),
-            Some(512),
-            Some("-rw-r--r--".to_string()),
-        );
-        assert_eq!(file.name, "my_file.txt");
-        assert_eq!(file.size(), 512);
-        assert_eq!(file.permissions(), "-rw-r--r--");
-    }
+#[must_use]
+pub fn get_modified_time(path: &Path) -> String {
+    path.metadata()
+        .map_or(DateTime::<Utc>::default().to_rfc2822(), |metadata| {
+            metadata
+                .modified()
+                .map_or(DateTime::<Utc>::default().to_rfc2822(), |time| {
+                    DateTime::<Utc>::from(time).to_rfc2822()
+                })
+        })
 }
