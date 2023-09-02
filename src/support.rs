@@ -46,11 +46,14 @@ fn triplet(mode: u32, read: u32, write: u32, execute: u32) -> String {
 
 #[must_use]
 pub fn get_file_name(path: &Path) -> String {
-    path.file_name().map_or(String::new(), |file_name| {
-        file_name
-            .to_str()
-            .map_or(String::new(), ToString::to_string)
-    })
+    path.file_name().map_or_else(
+        || String::from("-"),
+        |file_name| {
+            file_name
+                .to_str()
+                .map_or_else(|| String::from("-"), ToString::to_string)
+        },
+    )
 }
 
 #[must_use]

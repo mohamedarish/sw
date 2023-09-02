@@ -7,7 +7,7 @@ use std::{
 use crate::{
     file::File,
     folder::Folder,
-    support::{convert_size, get_file_name, parse_permissions},
+    support::{convert_size, get_file_name},
     Error, Result,
 };
 
@@ -33,37 +33,11 @@ impl Directory {
         let mut largest_name = if hidden { 2 } else { 0 };
 
         let (cur_dir, parent_dir) = if hidden {
-            let name = format!(".({})", get_file_name(root));
-
-            let parent = root.parent();
-
-            let parent_name = parent.map_or_else(
-                || String::from(".."),
-                |p| format!("..({})", get_file_name(p)),
-            );
-
-            let (permissions, children, parent_permissions, parent_children) = if list {
-                let metadata = root.metadata().ok();
-                let parent_metadata = parent.map_or_else(|| None, |p| Some(p.metadata()));
-
-                (
-                    Some(metadata.map_or("-".repeat(10), |meta| parse_permissions(&meta))),
-                    Some(root.read_dir().map_or(0, Iterator::count)),
-                    Some(parent_metadata.map_or("-".repeat(10), |m| {
-                        m.map_or("-".repeat(10), |meta| parse_permissions(&meta))
-                    })),
-                    Some(parent.map_or(0, |p| p.read_dir().map_or(0, Iterator::count))),
-                )
-            } else {
-                (None, None, None, None)
-            };
-
             (
-                Some(Folder::from(name, permissions, children)),
-                Some(Folder::from(
-                    parent_name,
-                    parent_permissions,
-                    parent_children,
+                Some(Folder::from(root, list)),
+                Some(root.parent().map_or_else(
+                    || Folder::from(root, list),
+                    |parent| Folder::from(parent, list),
                 )),
             )
         } else {
@@ -75,10 +49,13 @@ impl Directory {
         };
 
         for item in directory_to_read {
-            let item = item.ok();
-            let name = item
-                .as_ref()
-                .map_or(String::new(), |i| get_file_name(&i.path()));
+            let Ok(item) = item else {
+                return Err(Error::from("Cannot read the item in the directory"));
+            };
+
+            let path = item.path();
+
+            let name = get_file_name(&path);
 
             if name.len() > largest_name {
                 largest_name = name.len();
@@ -88,44 +65,16 @@ impl Directory {
                 continue;
             }
 
-            let (permissions, size, children) = if list {
-                let metadata = item.as_ref().and_then(|i| i.metadata().ok());
-
-                let children = if metadata.clone().map_or(false, |meta| meta.is_dir()) {
-                    let directory = item.as_ref().and_then(|i| i.path().read_dir().ok());
-
-                    directory.map(Iterator::count)
-                } else {
-                    None
-                };
-
-                let size = if metadata.clone().map_or(false, |meta| meta.is_file()) {
-                    Some(metadata.clone().map_or(0, |meta| meta.len()))
-                } else {
-                    None
-                };
-
-                (
-                    Some(metadata.map_or("-".repeat(10), |meta| parse_permissions(&meta))),
-                    size,
-                    children,
-                )
-            } else {
-                (None, None, None)
-            };
-
-            let info = item.and_then(|i| i.file_type().ok());
-
             if hidden && name.chars().nth(0) == Some('.') {
-                if info.map_or(false, |i| i.is_file()) {
-                    hidden_files.insert(File::from(name.to_string(), size, permissions));
-                } else if info.map_or(false, |i| i.is_dir()) {
-                    hidden_folders.insert(Folder::from(name.to_string(), permissions, children));
+                if path.is_file() {
+                    hidden_files.insert(File::from(&path, list));
+                } else if path.is_dir() {
+                    hidden_folders.insert(Folder::from(&path, list));
                 }
-            } else if info.map_or(false, |i| i.is_file()) {
-                files.insert(File::from(name.to_string(), size, permissions));
-            } else if info.map_or(false, |i| i.is_dir()) {
-                folders.insert(Folder::from(name.to_string(), permissions, children));
+            } else if path.is_file() {
+                files.insert(File::from(&path, list));
+            } else if path.is_dir() {
+                folders.insert(Folder::from(&path, list));
             }
         }
 
