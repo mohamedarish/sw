@@ -2,6 +2,8 @@ use std::path::Path;
 
 use crate::support::{get_created_time, get_file_name, get_modified_time, parse_permissions};
 
+const SIZE_HELPER: [char; 6] = ['b', 'k', 'm', 'g', 't', 'p'];
+
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct File {
     pub name: String,
@@ -62,8 +64,7 @@ impl File {
             .map_or(String::new(), ToString::to_string)
     }
 
-    #[must_use]
-    pub fn size(&self) -> u64 {
+    fn size(&self) -> u64 {
         self.size.map_or(0, |num| num)
     }
 
@@ -72,6 +73,19 @@ impl File {
         self.created_time
             .as_deref()
             .map_or(String::new(), ToString::to_string)
+    }
+
+    #[must_use]
+    pub fn formatted_size(&self) -> String {
+        let size = self.size();
+        let mut new_size = size;
+        let mut post = 0;
+        while new_size > 1024 {
+            new_size /= 1024;
+            post += 1;
+        }
+
+        format!("{}{}", new_size, SIZE_HELPER[post])
     }
 
     #[must_use]

@@ -4,12 +4,7 @@ use std::{
     path::Path,
 };
 
-use crate::{
-    file::File,
-    folder::Folder,
-    support::{convert_size, get_file_name},
-    Error, Result,
-};
+use crate::{file::File, folder::Folder, support::get_file_name, Error, Result};
 
 pub struct Directory {
     pub cur_dir: Option<Folder>,
@@ -163,26 +158,6 @@ impl Directory {
         count: &mut usize,
         width: usize,
     ) -> Result<()> {
-        match write!(
-            stdout,
-            "\x1B[1;92m\u{ea83} \x1B[0 \x1B[1;96m..{}\x1B[0",
-            " ".repeat(self.max_space() - 2)
-        ) {
-            Ok(()) => {}
-            Err(_) => return Err(Error::from("Cannot display output in stdout")),
-        }
-
-        match write!(
-            stdout,
-            "\x1B[1;92m\u{ea83} \x1B[0 \x1B[1;96m.{}\x1B[0",
-            " ".repeat(self.max_space() - 1)
-        ) {
-            Ok(()) => {}
-            Err(_) => return Err(Error::from("Cannot display output in stdout")),
-        }
-
-        *count += self.max_space() * 2;
-
         for file in &self.hidden_folders {
             if width - *count < self.max_space() + 4 {
                 match writeln!(stdout) {
@@ -302,15 +277,17 @@ impl Directory {
     }
 
     fn print_hidden_folders_list(&self, stdout: &mut StdoutLock) -> Result<()> {
-        let Some(parent_dir) = self.parent_dir.as_ref() else {
-            return Err(Error::from("Cannot reference parent directory object"));
-        };
-
-        Self::print_list_folder(parent_dir, stdout)?;
-
         let Some(cur_dir) = self.cur_dir.as_ref() else {
             return Err(Error::from("Cannot reference current directory object"));
         };
+
+        if cur_dir.name != "-" {
+            let Some(parent_dir) = self.parent_dir.as_ref() else {
+                return Err(Error::from("Cannot reference parent directory object"));
+            };
+
+            Self::print_list_folder(parent_dir, stdout)?;
+        }
 
         Self::print_list_folder(cur_dir, stdout)?;
 
@@ -360,7 +337,7 @@ impl Directory {
             "\x1B[0m{: <10} {: <4}{: <6}\x1B[0 \x1B[94m\u{ea7b} \x1B[0 \x1B[34m{: <25} \x1B[0",
             file.permissions(),
             1,
-            convert_size(file.size()),
+            file.formatted_size(),
             file.name
         ) {
             Ok(()) => Ok(()),

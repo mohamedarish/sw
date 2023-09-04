@@ -2,8 +2,6 @@ use std::{fs::Metadata, os::unix::prelude::PermissionsExt, path::Path};
 
 use chrono::{DateTime, Utc};
 
-const SIZE_HELPER: [char; 6] = ['b', 'k', 'm', 'g', 't', 'p'];
-
 #[must_use]
 pub fn parse_permissions(metadata: &Metadata) -> String {
     [
@@ -17,18 +15,6 @@ pub fn parse_permissions(metadata: &Metadata) -> String {
         triplet(metadata.permissions().mode(), 4, 2, 1),
     ]
     .join("")
-}
-
-#[must_use]
-pub fn convert_size(size: u64) -> String {
-    let mut new_size = size;
-    let mut post = 0;
-    while new_size > 1024 {
-        new_size /= 1024;
-        post += 1;
-    }
-
-    format!("{}{}", new_size, SIZE_HELPER[post])
 }
 
 fn triplet(mode: u32, read: u32, write: u32, execute: u32) -> String {

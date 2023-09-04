@@ -32,7 +32,10 @@ fn main() -> Result<()> {
 
     let directory = if let Some(dirpath) = args.path {
         if dirpath.is_file() {
-            return Err(Error::from("Given argument is a dir and not a path"));
+            return Err(Error::from(format!(
+                "The given argument is a file and not a directory: {}",
+                dirpath.to_str().map_or("-", |name| name)
+            )));
         }
 
         let path = match fs::canonicalize(dirpath) {
@@ -43,7 +46,7 @@ fn main() -> Result<()> {
         Directory::from(&path, args.all, args.list)
     } else {
         let Ok(current_dir) = env::current_dir() else {
-            return Err(Error::from("Cannot read current directory ."));
+            return Err(Error::from("Cannot read given directory"));
         };
 
         Directory::from(&current_dir, args.all, args.list)
