@@ -89,7 +89,7 @@ impl Directory {
     }
 
     /// # Errors
-    /// Will return an error if it cannot print to stdout 
+    /// Will return an error if it cannot print to stdout
     pub fn display_output(
         &self,
         stdout: &mut StdoutLock,
@@ -353,7 +353,7 @@ impl Directory {
             file.permissions(),
             file.children(),
             '-',
-            file.created_time(), 
+            file.created_time(),
             file.name
         ) {
             Ok(()) => Ok(()),
