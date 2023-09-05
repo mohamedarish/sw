@@ -18,7 +18,7 @@ pub struct Directory {
 
 impl Directory {
     /// # Errors
-    /// Many errors but, should not affect if proper permissions are available
+    /// This would throw an error if it cannot resolve any required objects
     pub fn from(root: &Path, hidden: bool, list: bool) -> Result<Self> {
         let mut folders = BTreeSet::new();
         let mut hidden_folders = BTreeSet::new();
@@ -89,7 +89,7 @@ impl Directory {
     }
 
     /// # Errors
-    /// Would throw an error if it cannot print the output in the stdoutput
+    /// Will return an error if it cannot print to stdout
     pub fn display_output(
         &self,
         stdout: &mut StdoutLock,
@@ -357,5 +357,59 @@ impl Directory {
             Ok(()) => Ok(()),
             Err(_) => Err(Error::from("Cannot write to stdout")),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::BTreeSet, path::PathBuf};
+
+    use crate::dir::Directory;
+
+    fn create_temp_directory_structure() -> PathBuf {
+        let root_dir = tempfile::tempdir().expect("Failed to create temporary directory");
+        let dir1 = root_dir.path().join("dir1");
+        std::fs::create_dir(&dir1).expect("Failed to create directory");
+        let dir2 = root_dir.path().join("dir2");
+        std::fs::create_dir(dir2).expect("Failed to create directory");
+        let file1 = dir1.join("file1.txt");
+        std::fs::File::create(file1).expect("Failed to create file");
+        let file2 = dir1.join("file2.txt");
+        std::fs::File::create(file2).expect("Failed to create file");
+
+        root_dir.into_path()
+    }
+
+    #[test]
+    fn test_from() {
+        let root_dir = create_temp_directory_structure();
+
+        let directory =
+            Directory::from(&root_dir, false, true).expect("Failed to create Directory");
+
+        assert!(directory.cur_dir.is_none());
+        assert!(directory.parent_dir.is_none());
+        assert_eq!(directory.folders.len(), 2);
+        assert_eq!(directory.hidden_folders.len(), 0);
+        assert_eq!(directory.files.len(), 0);
+        assert_eq!(directory.hidden_files.len(), 0);
+        assert_eq!(directory.largest_name, 4);
+
+        std::fs::remove_dir_all(&root_dir).expect("Failed to remove temporary directory");
+    }
+
+    #[test]
+    fn test_max_space() {
+        let directory = Directory {
+            cur_dir: None,
+            parent_dir: None,
+            folders: BTreeSet::new(),
+            hidden_folders: BTreeSet::new(),
+            files: BTreeSet::new(),
+            hidden_files: BTreeSet::new(),
+            largest_name: 10,
+        };
+
+        assert_eq!(directory.max_space(), 14);
     }
 }

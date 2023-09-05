@@ -77,3 +77,95 @@ impl Folder {
             .map_or(String::new(), ToString::to_string)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs::{self, DirBuilder};
+    use std::io::Write;
+    use std::path::PathBuf;
+
+    use crate::folder::Folder;
+
+    fn create_temp_directory_structure() -> PathBuf {
+        let temp_dir = tempfile::tempdir().expect("Failed to create temporary directory");
+
+        let dir1 = temp_dir.path().join("dir1");
+        DirBuilder::new()
+            .create(dir1)
+            .expect("Failed to create directory");
+        let dir2 = temp_dir.path().join("dir2");
+        DirBuilder::new()
+            .create(dir2)
+            .expect("Failed to create directory");
+        let file1 = temp_dir.path().join("file1.txt");
+        let mut file = fs::File::create(file1).expect("Failed to create file");
+        file.write_all(b"Hello, World!")
+            .expect("Failed to write to file");
+
+        temp_dir.into_path()
+    }
+
+    #[test]
+    fn test_from() {
+        let dir_path = create_temp_directory_structure();
+
+        let folder = Folder::from(&dir_path, true);
+
+        assert!(folder.permissions.is_some());
+        assert_eq!(folder.children, Some(3));
+        assert!(folder.created_time.is_some());
+        assert!(folder.modified_time.is_some());
+    }
+
+    #[test]
+    fn test_permissions() {
+        let folder = Folder {
+            name: "test_folder".to_string(),
+            permissions: Some("rw-r--r--".to_string()),
+            children: None,
+            created_time: None,
+            modified_time: None,
+        };
+
+        assert_eq!(folder.permissions(), "rw-r--r--");
+    }
+
+    #[test]
+    fn test_children() {
+        let folder = Folder {
+            name: "test_folder".to_string(),
+            permissions: None,
+            children: Some(5),
+            created_time: None,
+            modified_time: None,
+        };
+
+        assert_eq!(folder.children(), 5);
+    }
+
+    #[test]
+    fn test_created_time() {
+        let folder = Folder {
+            name: "test_folder".to_string(),
+            permissions: None,
+            children: None,
+            created_time: Some("2021-01-01".to_string()),
+            modified_time: None,
+        };
+
+        assert_eq!(folder.created_time(), "2021-01-01");
+    }
+
+    #[test]
+    fn test_modified_time() {
+        let folder = Folder {
+            name: "test_folder".to_string(),
+            permissions: None,
+            children: None,
+            created_time: None,
+            modified_time: Some("2021-02-01".to_string()),
+        };
+
+        assert_eq!(folder.modified_time(), "2021-02-01");
+    }
+}
