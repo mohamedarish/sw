@@ -1,6 +1,10 @@
 use std::{fs::Metadata, os::unix::prelude::PermissionsExt, path::Path};
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, Timelike, Utc};
+
+const DATE_MAPPER: [&str; 13] = [
+    "-", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dev",
+];
 
 #[must_use]
 pub fn parse_permissions(metadata: &Metadata) -> String {
@@ -44,50 +48,67 @@ pub fn get_file_name(path: &Path) -> String {
 
 #[must_use]
 pub fn get_created_time(path: &Path) -> String {
-    path.metadata()
-        .map_or(DateTime::<Utc>::default().to_rfc2822(), |metadata| {
+    let time = path
+        .metadata()
+        .map_or(DateTime::<Utc>::default(), |metadata| {
             metadata
                 .created()
-                .map_or(DateTime::<Utc>::default().to_rfc2822(), |time| {
-                    DateTime::<Utc>::from(time).to_rfc2822()
+                .map_or(DateTime::<Utc>::default(), |time| {
+                    DateTime::<Utc>::from(time)
                 })
-        })
+        });
+
+    format!(
+        "{: >3} {: >2} {: >2}:{: <2}",
+        DATE_MAPPER
+            .iter()
+            .nth(time.month().try_into().map_or(0, |index| index))
+            .map_or("-", |month| month),
+        time.day(),
+        time.hour(),
+        time.minute()
+    )
 }
 
 #[must_use]
 pub fn get_modified_time(path: &Path) -> String {
-    path.metadata()
-        .map_or(DateTime::<Utc>::default().to_rfc2822(), |metadata| {
+    let time = path
+        .metadata()
+        .map_or(DateTime::<Utc>::default(), |metadata| {
             metadata
                 .modified()
-                .map_or(DateTime::<Utc>::default().to_rfc2822(), |time| {
-                    DateTime::<Utc>::from(time).to_rfc2822()
+                .map_or(DateTime::<Utc>::default(), |time| {
+                    DateTime::<Utc>::from(time)
                 })
-        })
+        });
+
+    format!(
+        "{: >3} {: >2} {: >2}:{: <2}",
+        DATE_MAPPER
+            .iter()
+            .nth(time.month().try_into().map_or(0, |index| index))
+            .map_or("-", |month| month),
+        time.day(),
+        time.hour(),
+        time.minute()
+    )
 }
 
 #[cfg(test)]
 mod tests {
-    use std::fs::{self, File};
+    use std::fs::File;
     use std::io::Write;
-    use std::os::unix::fs::PermissionsExt;
     use std::path::PathBuf;
 
     use crate::support::{get_created_time, get_file_name, get_modified_time};
 
-    fn create_temp_file_with_permissions(permissions: u32) -> PathBuf {
+    fn create_temp_file_with_permissions() -> PathBuf {
         let temp_dir = tempfile::tempdir().expect("Failed to create temporary directory");
         let file_path = temp_dir.path().join("test_file.txt");
         let mut file = File::create(&file_path).expect("Failed to create temporary file");
 
         file.write_all(b"Hello, World!")
             .expect("Failed to write to file");
-
-        let metadata = fs::metadata(&file_path).expect("Failed to get file metadata");
-        let mut permission = metadata.permissions();
-
-        permission.set_mode(permissions);
-        fs::set_permissions(&file_path, permission).expect("Failed to set file permissions");
 
         file_path
     }
@@ -101,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_get_created_time() {
-        let file_path = create_temp_file_with_permissions(0o755);
+        let file_path = create_temp_file_with_permissions();
 
         let created_time = get_created_time(&file_path);
 
@@ -110,7 +131,7 @@ mod tests {
 
     #[test]
     fn test_get_modified_time() {
-        let file_path = create_temp_file_with_permissions(0o755);
+        let file_path = create_temp_file_with_permissions();
 
         let modified_time = get_modified_time(&file_path);
 
