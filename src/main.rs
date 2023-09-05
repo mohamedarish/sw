@@ -7,6 +7,8 @@
 
 pub mod args;
 pub mod dir;
+pub mod file;
+pub mod folder;
 pub mod support;
 
 use std::{env, error, fs, io, result};
@@ -22,19 +24,18 @@ fn main() -> Result<()> {
     let stdout = io::stdout();
     let mut handler = stdout.lock();
 
-    let width;
-
-    if let Some((w, _)) = term_size::dimensions() {
-        width = w;
-    } else {
-        return Err(Error::from("Cannot get the size of the terminal"));
-    }
+    let Some((width, _)) = term_size::dimensions() else {
+        return Err(Error::from("Cannot get the terminal window size"));
+    };
 
     let args = Cli::parse();
 
     let directory = if let Some(dirpath) = args.path {
         if dirpath.is_file() {
-            return Err(Error::from("Given argument is a dir and not a path"));
+            return Err(Error::from(format!(
+                "The given argument is a file and not a directory: {}",
+                dirpath.to_str().map_or("-", |name| name)
+            )));
         }
 
         let path = match fs::canonicalize(dirpath) {
@@ -45,7 +46,7 @@ fn main() -> Result<()> {
         Directory::from(&path, args.all, args.list)
     } else {
         let Ok(current_dir) = env::current_dir() else {
-            return Err(Error::from("Cannot read current directory ."));
+            return Err(Error::from("Cannot read given directory"));
         };
 
         Directory::from(&current_dir, args.all, args.list)

@@ -4,10 +4,7 @@ use std::{
     path::Path,
 };
 
-use crate::{
-    support::{convert_size, get_file_name, parse_permissions, File, Folder},
-    Error, Result,
-};
+use crate::{file::File, folder::Folder, support::get_file_name, Error, Result};
 
 pub struct Directory {
     pub cur_dir: Option<Folder>,
@@ -20,11 +17,8 @@ pub struct Directory {
 }
 
 impl Directory {
-    /// # Panics
-    /// This function panics if relevant information cannot be accessed
-    ///
     /// # Errors
-    /// Many errors
+    /// This would throw an error if it cannot resolve any required objects
     pub fn from(root: &Path, hidden: bool, list: bool) -> Result<Self> {
         let mut folders = BTreeSet::new();
         let mut hidden_folders = BTreeSet::new();
@@ -34,37 +28,11 @@ impl Directory {
         let mut largest_name = if hidden { 2 } else { 0 };
 
         let (cur_dir, parent_dir) = if hidden {
-            let name = format!(".({})", get_file_name(root));
-
-            let parent = root.parent();
-
-            let parent_name = parent.map_or_else(
-                || String::from(".."),
-                |p| format!("..({})", get_file_name(p)),
-            );
-
-            let (permissions, children, parent_permissions, parent_children) = if list {
-                let metadata = root.metadata().ok();
-                let parent_metadata = parent.map_or_else(|| None, |p| Some(p.metadata()));
-
-                (
-                    Some(metadata.map_or("-".repeat(10), |meta| parse_permissions(&meta))),
-                    Some(root.read_dir().map_or(0, Iterator::count)),
-                    Some(parent_metadata.map_or("-".repeat(10), |m| {
-                        m.map_or("-".repeat(10), |meta| parse_permissions(&meta))
-                    })),
-                    Some(parent.map_or(0, |p| p.read_dir().map_or(0, Iterator::count))),
-                )
-            } else {
-                (None, None, None, None)
-            };
-
             (
-                Some(Folder::from(name, permissions, children)),
-                Some(Folder::from(
-                    parent_name,
-                    parent_permissions,
-                    parent_children,
+                Some(Folder::from(root, list)),
+                Some(root.parent().map_or_else(
+                    || Folder::from(root, list),
+                    |parent| Folder::from(parent, list),
                 )),
             )
         } else {
@@ -76,10 +44,13 @@ impl Directory {
         };
 
         for item in directory_to_read {
-            let item = item.ok();
-            let name = item
-                .as_ref()
-                .map_or(String::new(), |i| get_file_name(&i.path()));
+            let Ok(item) = item else {
+                return Err(Error::from("Cannot read the item in the directory"));
+            };
+
+            let path = item.path();
+
+            let name = get_file_name(&path);
 
             if name.len() > largest_name {
                 largest_name = name.len();
@@ -89,44 +60,16 @@ impl Directory {
                 continue;
             }
 
-            let (permissions, size, children) = if list {
-                let metadata = item.as_ref().and_then(|i| i.metadata().ok());
-
-                let children = if metadata.clone().map_or(false, |meta| meta.is_dir()) {
-                    let directory = item.as_ref().and_then(|i| i.path().read_dir().ok());
-
-                    directory.map(Iterator::count)
-                } else {
-                    None
-                };
-
-                let size = if metadata.clone().map_or(false, |meta| meta.is_file()) {
-                    Some(metadata.clone().map_or(0, |meta| meta.len()))
-                } else {
-                    None
-                };
-
-                (
-                    Some(metadata.map_or("-".repeat(10), |meta| parse_permissions(&meta))),
-                    size,
-                    children,
-                )
-            } else {
-                (None, None, None)
-            };
-
-            let info = item.and_then(|i| i.file_type().ok());
-
             if hidden && name.chars().nth(0) == Some('.') {
-                if info.map_or(false, |i| i.is_file()) {
-                    hidden_files.insert(File::from(name.to_string(), size, permissions));
-                } else if info.map_or(false, |i| i.is_dir()) {
-                    hidden_folders.insert(Folder::from(name.to_string(), permissions, children));
+                if path.is_file() {
+                    hidden_files.insert(File::from(&path, list));
+                } else if path.is_dir() {
+                    hidden_folders.insert(Folder::from(&path, list));
                 }
-            } else if info.map_or(false, |i| i.is_file()) {
-                files.insert(File::from(name.to_string(), size, permissions));
-            } else if info.map_or(false, |i| i.is_dir()) {
-                folders.insert(Folder::from(name.to_string(), permissions, children));
+            } else if path.is_file() {
+                files.insert(File::from(&path, list));
+            } else if path.is_dir() {
+                folders.insert(Folder::from(&path, list));
             }
         }
 
@@ -146,7 +89,7 @@ impl Directory {
     }
 
     /// # Errors
-    /// Would throw an error if it cannot print the output in the stdoutput
+    /// Will return an error if it cannot print to stdout
     pub fn display_output(
         &self,
         stdout: &mut StdoutLock,
@@ -215,26 +158,6 @@ impl Directory {
         count: &mut usize,
         width: usize,
     ) -> Result<()> {
-        match write!(
-            stdout,
-            "\x1B[1;92m\u{ea83} \x1B[0 \x1B[1;96m..{}\x1B[0",
-            " ".repeat(self.max_space() - 2)
-        ) {
-            Ok(()) => {}
-            Err(_) => return Err(Error::from("Cannot display output in stdout")),
-        }
-
-        match write!(
-            stdout,
-            "\x1B[1;92m\u{ea83} \x1B[0 \x1B[1;96m.{}\x1B[0",
-            " ".repeat(self.max_space() - 1)
-        ) {
-            Ok(()) => {}
-            Err(_) => return Err(Error::from("Cannot display output in stdout")),
-        }
-
-        *count += self.max_space() * 2;
-
         for file in &self.hidden_folders {
             if width - *count < self.max_space() + 4 {
                 match writeln!(stdout) {
@@ -354,15 +277,17 @@ impl Directory {
     }
 
     fn print_hidden_folders_list(&self, stdout: &mut StdoutLock) -> Result<()> {
-        let Some(parent_dir) = self.parent_dir.as_ref() else {
-            return Err(Error::from("Cannot reference parent directory object"));
-        };
-
-        Self::print_list_folder(parent_dir, stdout)?;
-
         let Some(cur_dir) = self.cur_dir.as_ref() else {
             return Err(Error::from("Cannot reference current directory object"));
         };
+
+        if cur_dir.name != "-" {
+            let Some(parent_dir) = self.parent_dir.as_ref() else {
+                return Err(Error::from("Cannot reference parent directory object"));
+            };
+
+            Self::print_list_folder(parent_dir, stdout)?;
+        }
 
         Self::print_list_folder(cur_dir, stdout)?;
 
@@ -377,7 +302,7 @@ impl Directory {
         for file in &self.folders {
             match Self::print_list_folder(file, stdout) {
                 Ok(()) => {}
-                _ => return Err(Error::from("Cannot write to stdout")),
+                Err(_) => return Err(Error::from("Cannot write to stdout")),
             }
         }
 
@@ -388,7 +313,7 @@ impl Directory {
         for file in &self.hidden_files {
             match Self::print_list_file(file, stdout) {
                 Ok(()) => {}
-                _ => return Err(Error::from("Cannot write to stdout")),
+                Err(_) => return Err(Error::from("Cannot write to stdout")),
             }
         }
 
@@ -399,7 +324,7 @@ impl Directory {
         for file in &self.files {
             match Self::print_list_file(file, stdout) {
                 Ok(()) => {}
-                _ => return Err(Error::from("Cannot write ro stdout")),
+                Err(_) => return Err(Error::from("Cannot write ro stdout")),
             }
         }
 
@@ -412,7 +337,7 @@ impl Directory {
             "\x1B[0m{: <10} {: <4}{: <6}\x1B[0 \x1B[94m\u{ea7b} \x1B[0 \x1B[34m{: <25} \x1B[0",
             file.permissions(),
             1,
-            convert_size(file.size()),
+            file.formatted_size(),
             file.name
         ) {
             Ok(()) => Ok(()),
@@ -437,65 +362,54 @@ impl Directory {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
-    use std::fs;
-    use std::io;
-    use std::path::PathBuf;
-    use tempfile::TempDir;
+    use std::{collections::BTreeSet, path::PathBuf};
 
     use crate::dir::Directory;
-    use crate::support::File;
-    use crate::support::Folder;
 
-    fn create_test_directory(hidden: bool) -> io::Result<TempDir> {
-        let temp_dir = TempDir::new()?;
+    fn create_temp_directory_structure() -> PathBuf {
+        let root_dir = tempfile::tempdir().expect("Failed to create temporary directory");
+        let dir1 = root_dir.path().join("dir1");
+        std::fs::create_dir(&dir1).expect("Failed to create directory");
+        let dir2 = root_dir.path().join("dir2");
+        std::fs::create_dir(dir2).expect("Failed to create directory");
+        let file1 = dir1.join("file1.txt");
+        std::fs::File::create(file1).expect("Failed to create file");
+        let file2 = dir1.join("file2.txt");
+        std::fs::File::create(file2).expect("Failed to create file");
 
-        if hidden {
-            fs::create_dir(temp_dir.path().join(".hidden_folder"))?;
-            fs::File::create(temp_dir.path().join(".hidden_file.txt"))?;
-        } else {
-            fs::create_dir(temp_dir.path().join("folder1"))?;
-            fs::File::create(temp_dir.path().join("file1.txt"))?;
-        }
-
-        Ok(temp_dir)
+        root_dir.into_path()
     }
 
     #[test]
-    fn test_directory_creation_visible() {
-        let temp_dir = create_test_directory(false).expect("Cannot create a test directory");
-        let root = PathBuf::from(temp_dir.path());
+    fn test_from() {
+        let root_dir = create_temp_directory_structure();
 
-        let directory = Directory::from(&root, false, false).expect("Some error occurred");
+        let directory =
+            Directory::from(&root_dir, false, true).expect("Failed to create Directory");
 
-        let expected_folders = vec![Folder::from("folder1".to_string(), None, None)];
-        let expected_files = vec![File::from("file1.txt".to_string(), None, None)];
+        assert!(directory.cur_dir.is_none());
+        assert!(directory.parent_dir.is_none());
+        assert_eq!(directory.folders.len(), 2);
+        assert_eq!(directory.hidden_folders.len(), 0);
+        assert_eq!(directory.files.len(), 0);
+        assert_eq!(directory.hidden_files.len(), 0);
+        assert_eq!(directory.largest_name, 4);
 
-        assert_eq!(directory.folders, BTreeSet::from_iter(expected_folders));
-        assert_eq!(directory.hidden_folders, BTreeSet::new());
-        assert_eq!(directory.files, BTreeSet::from_iter(expected_files));
-        assert_eq!(directory.hidden_files, BTreeSet::new());
+        std::fs::remove_dir_all(&root_dir).expect("Failed to remove temporary directory");
     }
 
     #[test]
-    fn test_directory_creation_hidden() {
-        let temp_dir = create_test_directory(true).expect("Cannot create a test directory");
-        let root = PathBuf::from(temp_dir.path());
+    fn test_max_space() {
+        let directory = Directory {
+            cur_dir: None,
+            parent_dir: None,
+            folders: BTreeSet::new(),
+            hidden_folders: BTreeSet::new(),
+            files: BTreeSet::new(),
+            hidden_files: BTreeSet::new(),
+            largest_name: 10,
+        };
 
-        let directory = Directory::from(&root, true, false).expect("Some error occurred");
-
-        let expected_hidden_folders = vec![Folder::from(".hidden_folder".to_string(), None, None)];
-        let expected_hidden_files = vec![File::from(".hidden_file.txt".to_string(), None, None)];
-
-        assert_eq!(directory.folders, BTreeSet::new());
-        assert_eq!(
-            directory.hidden_folders,
-            BTreeSet::from_iter(expected_hidden_folders)
-        );
-        assert_eq!(directory.files, BTreeSet::new());
-        assert_eq!(
-            directory.hidden_files,
-            BTreeSet::from_iter(expected_hidden_files)
-        );
+        assert_eq!(directory.max_space(), 14);
     }
 }
