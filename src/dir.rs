@@ -334,10 +334,11 @@ impl Directory {
     fn print_list_file(file: &File, stdout: &mut StdoutLock) -> Result<()> {
         match writeln!(
             stdout,
-            "\x1B[0m{: <10} {: <4}{: <6}\x1B[0 \x1B[94m\u{ea7b} \x1B[0 \x1B[34m{: <25} \x1B[0",
+            "\x1B[0m{: <10} {: <4}{: <6} {} \x1B[0 \x1B[94m\u{ea7b} \x1B[0 \x1B[34m{: <25} \x1B[0",
             file.permissions(),
             1,
             file.formatted_size(),
+            file.created_time(),
             file.name
         ) {
             Ok(()) => Ok(()),
@@ -348,10 +349,11 @@ impl Directory {
     fn print_list_folder(file: &Folder, stdout: &mut StdoutLock) -> Result<()> {
         match writeln!(
             stdout,
-            "\x1B[0m{: <10} {: <4}{: <6}\x1B[0 \x1B[92m\u{ea83} \x1B[0 \x1B[1;32m{: <25} \x1B[0",
+            "\x1B[0m{: <10} {: <4}{: <6} {} \x1B[0 \x1B[92m\u{ea83} \x1B[0 \x1B[1;32m{: <25} \x1B[0",
             file.permissions(),
             file.children(),
             '-',
+            file.created_time(),
             file.name
         ) {
             Ok(()) => Ok(()),

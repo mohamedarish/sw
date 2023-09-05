@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::support::{get_created_time, get_file_name, get_modified_time, parse_permissions};
+use crate::support::{get_created_time, get_file_name, parse_permissions};
 
 const SIZE_HELPER: [char; 6] = ['b', 'k', 'm', 'g', 't', 'p'];
 
@@ -10,7 +10,6 @@ pub struct File {
     size: Option<u64>,
     permissions: Option<String>,
     created_time: Option<String>,
-    modified_time: Option<String>,
 }
 
 impl File {
@@ -42,18 +41,11 @@ impl File {
             None
         };
 
-        let modified_time = if list {
-            Some(get_modified_time(path))
-        } else {
-            None
-        };
-
         Self {
             name,
             size,
             permissions,
             created_time,
-            modified_time,
         }
     }
 
@@ -87,13 +79,6 @@ impl File {
 
         format!("{}{}", new_size, SIZE_HELPER[post])
     }
-
-    #[must_use]
-    pub fn modified_time(&self) -> String {
-        self.modified_time
-            .as_deref()
-            .map_or(String::new(), ToString::to_string)
-    }
 }
 
 #[cfg(test)]
@@ -119,7 +104,6 @@ mod tests {
         assert_eq!(file.size, Some(0));
         assert!(file.permissions.is_some());
         assert!(file.created_time.is_some());
-        assert!(file.modified_time.is_some());
     }
 
     #[test]
@@ -129,7 +113,6 @@ mod tests {
             size: Some(0),
             permissions: Some("rw-r--r--".to_string()),
             created_time: Some("2021-01-01".to_string()),
-            modified_time: Some("2021-02-01".to_string()),
         };
 
         assert_eq!(file.permissions(), "rw-r--r--");
@@ -142,7 +125,6 @@ mod tests {
             size: Some(1024),
             permissions: None,
             created_time: None,
-            modified_time: None,
         };
 
         assert_eq!(file.formatted_size(), "1k");
@@ -155,22 +137,8 @@ mod tests {
             size: Some(0),
             permissions: None,
             created_time: Some("2021-01-01".to_string()),
-            modified_time: None,
         };
 
         assert_eq!(file.created_time(), "2021-01-01");
-    }
-
-    #[test]
-    fn test_modified_time() {
-        let file = File {
-            name: "test_file.txt".to_string(),
-            size: Some(0),
-            permissions: None,
-            created_time: None,
-            modified_time: Some("2021-02-01".to_string()),
-        };
-
-        assert_eq!(file.modified_time(), "2021-02-01");
     }
 }

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::support::{get_created_time, get_file_name, get_modified_time, parse_permissions};
+use crate::support::{get_created_time, get_file_name, parse_permissions};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Folder {
@@ -8,7 +8,6 @@ pub struct Folder {
     permissions: Option<String>,
     children: Option<usize>,
     created_time: Option<String>,
-    modified_time: Option<String>,
 }
 
 impl Folder {
@@ -36,18 +35,11 @@ impl Folder {
             None
         };
 
-        let modified_time = if list {
-            Some(get_modified_time(path))
-        } else {
-            None
-        };
-
         Self {
             name,
             permissions,
             children,
             created_time,
-            modified_time,
         }
     }
 
@@ -66,13 +58,6 @@ impl Folder {
     #[must_use]
     pub fn created_time(&self) -> String {
         self.created_time
-            .as_deref()
-            .map_or(String::new(), ToString::to_string)
-    }
-
-    #[must_use]
-    pub fn modified_time(&self) -> String {
-        self.modified_time
             .as_deref()
             .map_or(String::new(), ToString::to_string)
     }
@@ -114,7 +99,6 @@ mod tests {
         assert!(folder.permissions.is_some());
         assert_eq!(folder.children, Some(3));
         assert!(folder.created_time.is_some());
-        assert!(folder.modified_time.is_some());
     }
 
     #[test]
@@ -124,7 +108,6 @@ mod tests {
             permissions: Some("rw-r--r--".to_string()),
             children: None,
             created_time: None,
-            modified_time: None,
         };
 
         assert_eq!(folder.permissions(), "rw-r--r--");
@@ -137,7 +120,6 @@ mod tests {
             permissions: None,
             children: Some(5),
             created_time: None,
-            modified_time: None,
         };
 
         assert_eq!(folder.children(), 5);
@@ -150,22 +132,8 @@ mod tests {
             permissions: None,
             children: None,
             created_time: Some("2021-01-01".to_string()),
-            modified_time: None,
         };
 
         assert_eq!(folder.created_time(), "2021-01-01");
-    }
-
-    #[test]
-    fn test_modified_time() {
-        let folder = Folder {
-            name: "test_folder".to_string(),
-            permissions: None,
-            children: None,
-            created_time: None,
-            modified_time: Some("2021-02-01".to_string()),
-        };
-
-        assert_eq!(folder.modified_time(), "2021-02-01");
     }
 }
